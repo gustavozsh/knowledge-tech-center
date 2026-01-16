@@ -118,14 +118,15 @@ Cargo.lock
 *.pkl
 *.pickle
 *.parquet
-*.csv
-!**/sample_data/*.csv
 mlruns/
 mlflow/
 wandb/
 .neptune/
 models/
 !**/models/.gitkeep
+# Large data files - keep sample data
+*.csv
+!**/sample_data/*.csv
 
 # ============================
 # Infrastructure
