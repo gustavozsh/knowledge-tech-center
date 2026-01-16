@@ -15,6 +15,12 @@ apps-factory/
 ├── data-engineering/        # Data pipelines, ETL processes
 ├── data-science/            # ML models, experiments, notebooks
 ├── generative-ai/           # Gen AI applications, LLM integrations
+├── resources/               # Shared IT content and learning materials
+│   ├── papers/              # Research papers and whitepapers
+│   ├── books/               # Technical books and textbooks
+│   ├── articles/            # Technical articles and blog posts
+│   ├── tutorials/           # Step-by-step tutorials
+│   └── certifications/      # Certification study materials
 ├── utils/                   # Shared utility functions and libraries
 ├── infrastructure/          # Infrastructure as Code (Terraform, Pulumi, etc.)
 ├── devops/                  # CI/CD, Docker, Kubernetes configurations
@@ -30,6 +36,7 @@ apps-factory/
 | [`data-engineering/`](data-engineering/) | Data pipelines, ETL, transformations | Airflow, Spark, dbt, Kafka |
 | [`data-science/`](data-science/) | ML models, experiments, analysis | PyTorch, TensorFlow, scikit-learn |
 | [`generative-ai/`](generative-ai/) | LLM apps, RAG, AI agents | LangChain, LlamaIndex, OpenAI |
+| [`resources/`](resources/) | IT content, papers, books, tutorials | PDF, Markdown, study materials |
 | [`utils/`](utils/) | Shared libraries, common utilities | Python, JavaScript, Go packages |
 | [`infrastructure/`](infrastructure/) | Cloud infrastructure code | Terraform, Pulumi, Kubernetes |
 | [`devops/`](devops/) | CI/CD, containers, monitoring | GitHub Actions, Docker, Prometheus |
