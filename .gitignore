@@ -1,0 +1,185 @@
+# ============================
+# Apps Factory - .gitignore
+# ============================
+
+# ============================
+# General
+# ============================
+*.log
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# ============================
+# IDEs and Editors
+# ============================
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+.project
+.classpath
+.settings/
+*.iml
+
+# ============================
+# Python
+# ============================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+.mypy_cache/
+.ruff_cache/
+venv/
+.venv/
+env/
+.env/
+ENV/
+
+# ============================
+# Node.js / JavaScript
+# ============================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn-integrity
+.pnpm-store/
+coverage/
+.next/
+.nuxt/
+dist/
+.cache/
+
+# ============================
+# Java / JVM
+# ============================
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+hs_err_pid*
+
+# ============================
+# Go
+# ============================
+vendor/
+*.exe
+*.exe~
+*.dll
+*.dylib
+*.test
+*.out
+
+# ============================
+# Rust
+# ============================
+/target/
+Cargo.lock
+
+# ============================
+# Data Science / ML
+# ============================
+*.ipynb_checkpoints/
+.ipynb_checkpoints/
+*.h5
+*.hdf5
+*.pkl
+*.pickle
+*.parquet
+mlruns/
+mlflow/
+wandb/
+.neptune/
+models/
+!**/models/.gitkeep
+# Large data files - keep sample data
+*.csv
+!**/sample_data/*.csv
+
+# ============================
+# Infrastructure
+# ============================
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+*.tfvars
+!**/examples/*.tfvars
+
+# Pulumi
+.pulumi/
+
+# ============================
+# Docker
+# ============================
+*.dockerignore
+
+# ============================
+# Secrets and Environment
+# ============================
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+secrets/
+credentials/
+
+# ============================
+# Build Artifacts
+# ============================
+bin/
+obj/
+out/
+build/
+dist/
+*.o
+*.a
+*.lib
+
+# ============================
+# Test Results
+# ============================
+test-results/
+junit*.xml
+coverage/
+*.lcov
