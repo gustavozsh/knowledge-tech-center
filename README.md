@@ -7,6 +7,11 @@ A comprehensive monorepo structure for developing multiple types of software app
 ```
 apps-factory/
 ├── apis/                    # REST/GraphQL APIs and backend services
+├── cloud/                   # Cloud provider-specific resources
+│   ├── aws/                 # Amazon Web Services
+│   ├── azure/               # Microsoft Azure
+│   ├── gcp/                 # Google Cloud Platform
+│   └── oci/                 # Oracle Cloud Infrastructure
 ├── data-engineering/        # Data pipelines, ETL processes
 ├── data-science/            # ML models, experiments, notebooks
 ├── generative-ai/           # Gen AI applications, LLM integrations
@@ -21,6 +26,7 @@ apps-factory/
 | Directory | Purpose | Technologies |
 |-----------|---------|--------------|
 | [`apis/`](apis/) | Backend services, REST/GraphQL APIs | FastAPI, Express, Spring Boot, Gin |
+| [`cloud/`](cloud/) | Cloud provider-specific resources | AWS, Azure, GCP, OCI |
 | [`data-engineering/`](data-engineering/) | Data pipelines, ETL, transformations | Airflow, Spark, dbt, Kafka |
 | [`data-science/`](data-science/) | ML models, experiments, analysis | PyTorch, TensorFlow, scikit-learn |
 | [`generative-ai/`](generative-ai/) | LLM apps, RAG, AI agents | LangChain, LlamaIndex, OpenAI |

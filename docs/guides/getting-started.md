@@ -18,6 +18,11 @@ Welcome to Apps Factory! This guide will help you get started with the repositor
 ```
 apps-factory/
 ├── apis/                    # REST/GraphQL APIs and backend services
+├── cloud/                   # Cloud provider-specific resources
+│   ├── aws/                 # Amazon Web Services
+│   ├── azure/               # Microsoft Azure
+│   ├── gcp/                 # Google Cloud Platform
+│   └── oci/                 # Oracle Cloud Infrastructure
 ├── data-engineering/        # Data pipelines and ETL processes
 ├── data-science/            # ML models and experiments
 ├── generative-ai/           # Gen AI applications
@@ -36,11 +41,15 @@ Select the appropriate directory based on your project type:
 | Project Type | Directory |
 |-------------|-----------|
 | API/Backend Service | `apis/` |
+| AWS Resources | `cloud/aws/` |
+| Azure Resources | `cloud/azure/` |
+| GCP Resources | `cloud/gcp/` |
+| OCI Resources | `cloud/oci/` |
 | Data Pipeline/ETL | `data-engineering/` |
 | ML Model/Experiment | `data-science/` |
 | Gen AI Application | `generative-ai/` |
 | Shared Library | `utils/` |
-| Cloud Resources | `infrastructure/` |
+| Multi-Cloud IaC | `infrastructure/` |
 | CI/CD/Containers | `devops/` |
 
 ### 2. Create Your Project Directory
