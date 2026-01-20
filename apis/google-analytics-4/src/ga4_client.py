@@ -21,7 +21,7 @@ from google.oauth2 import service_account
 from .models import DateRange, Dimension, Metric, RunReportRequest
 
 
-class GA4Client:
+class GoogleAnalytics4:
     """
     Cliente para interagir com o Google Analytics 4 Data API.
 
@@ -54,19 +54,37 @@ class GA4Client:
         >>> print(response)
     """
 
-    def __init__(self, property_id: str, credentials_path: Optional[str] = None,
-                 credentials_dict: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        property_id: str,
+        credentials: Optional[service_account.Credentials] = None,
+        credentials_path: Optional[str] = None,
+        credentials_dict: Optional[Dict[str, Any]] = None
+    ):
         """
         Inicializa o cliente GA4.
 
         Args:
             property_id: ID da propriedade GA4 (com ou sem o prefixo 'properties/')
+            credentials: Objeto Credentials já criado (preferencial para Cloud Run)
             credentials_path: Caminho para o arquivo JSON de credenciais da conta de serviço
             credentials_dict: Dicionário com as credenciais (alternativa ao credentials_path)
 
         Raises:
             ValueError: Se nenhuma credencial for fornecida
             FileNotFoundError: Se o arquivo de credenciais não for encontrado
+
+        Examples:
+            >>> # Opção 1: Com objeto Credentials (Cloud Run)
+            >>> from google.oauth2.service_account import Credentials
+            >>> creds = Credentials.from_service_account_info(json_data)
+            >>> client = GA4Client(property_id='123456789', credentials=creds)
+            >>>
+            >>> # Opção 2: Com arquivo
+            >>> client = GA4Client(property_id='123456789', credentials_path='creds.json')
+            >>>
+            >>> # Opção 3: Com dicionário
+            >>> client = GA4Client(property_id='123456789', credentials_dict=json_data)
         """
         if not property_id.startswith('properties/'):
             self.property_id = f'properties/{property_id}'
@@ -74,32 +92,29 @@ class GA4Client:
             self.property_id = property_id
 
         # Carregar credenciais
-        if credentials_path:
+        if credentials:
+            # Usar credenciais já fornecidas (caso do Cloud Run)
+            creds = credentials
+        elif credentials_path:
             if not os.path.exists(credentials_path):
                 raise FileNotFoundError(f"Arquivo de credenciais não encontrado: {credentials_path}")
 
-            credentials = service_account.Credentials.from_service_account_file(
+            creds = service_account.Credentials.from_service_account_file(
                 credentials_path,
                 scopes=['https://www.googleapis.com/auth/analytics.readonly']
             )
         elif credentials_dict:
-            credentials = service_account.Credentials.from_service_account_info(
+            creds = service_account.Credentials.from_service_account_info(
                 credentials_dict,
                 scopes=['https://www.googleapis.com/auth/analytics.readonly']
             )
         else:
             # Tentar usar Application Default Credentials
-            try:
-                credentials = None  # O client tentará usar ADC
-            except Exception as e:
-                raise ValueError(
-                    "Nenhuma credencial fornecida. "
-                    "Forneça credentials_path, credentials_dict ou configure ADC"
-                )
+            creds = None  # O client tentará usar ADC
 
         # Inicializar o cliente
-        if credentials:
-            self.client = BetaAnalyticsDataClient(credentials=credentials)
+        if creds:
+            self.client = BetaAnalyticsDataClient(credentials=creds)
         else:
             self.client = BetaAnalyticsDataClient()
 
@@ -393,4 +408,8 @@ class GA4Client:
                 writer.writerow(row_dict)
 
     def __repr__(self) -> str:
-        return f"GA4Client(property_id='{self.property_id}')"
+        return f"GoogleAnalytics4(property_id='{self.property_id}')"
+
+
+# Alias para compatibilidade
+GA4Client = GoogleAnalytics4
