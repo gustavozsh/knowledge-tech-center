@@ -1,0 +1,18 @@
+# Google Analytics Data API
+google-analytics-data>=0.18.0
+
+# Google Cloud Services
+google-cloud-bigquery>=3.11.0
+google-cloud-secret-manager>=2.16.0
+
+# Google Auth
+google-auth>=2.23.0
+google-auth-oauthlib>=1.1.0
+google-auth-httplib2>=0.1.1
+
+# Web Framework (Cloud Run)
+Flask>=3.0.0
+gunicorn>=21.2.0
+
+# Utilities
+python-dotenv>=1.0.0

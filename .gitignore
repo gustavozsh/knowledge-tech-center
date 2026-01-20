@@ -183,3 +183,12 @@ test-results/
 junit*.xml
 coverage/
 *.lcov
+
+# ============================
+# Archive Files
+# ============================
+*.zip
+*.tar.gz
+*.tar
+*.rar
+*.7z
