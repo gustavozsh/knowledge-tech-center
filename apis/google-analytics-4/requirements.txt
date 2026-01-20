@@ -1,0 +1,13 @@
+# Google Analytics Data API
+google-analytics-data>=0.18.0
+
+# Google Auth
+google-auth>=2.23.0
+google-auth-oauthlib>=1.1.0
+google-auth-httplib2>=0.1.1
+
+# Utilities
+python-dotenv>=1.0.0
+
+# Data processing (opcional, mas útil)
+pandas>=2.0.0
