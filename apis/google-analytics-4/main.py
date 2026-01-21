@@ -1,40 +1,32 @@
 """
-Entry point principal para Cloud Run
-API REST para executar relatórios do Google Analytics 4 e salvar no BigQuery
+API de Extração de Dados do Google Analytics 4 para BigQuery.
 
-Este módulo fornece endpoints REST para:
-- Executar relatórios de dimensões específicas
-- Executar relatórios de métricas específicas
-- Executar todos os relatórios de uma vez
-- Health check e status da API
+Este é o arquivo principal da API, que expõe endpoints REST
+para extrair dados do GA4 e carregá-los no BigQuery.
 
-Versão Python: 3.11+
-Autor: Data Engineering Team
-Data: Janeiro 2025
+Autor: Manus AI
+Data: Janeiro de 2026
+Versão: 2.0.0
+
+Para executar localmente:
+    python main.py
+
+Para testar autenticação:
+    python main.py --test
+
+Para extrair via CLI:
+    python main.py --extract <property_id> [start_date] [end_date]
+
+Para deploy no Cloud Run:
+    A função principal é `main()` que inicia o servidor Flask.
 """
 
 import os
-import json
+import sys
 import logging
-from typing import Dict, Any, List
 from datetime import datetime
-
+from typing import Dict, Any, Optional
 from flask import Flask, request, jsonify
-from google.oauth2.service_account import Credentials
-
-from src.secret_manager import SecretManager
-from src.ga4_client import GoogleAnalytics4
-from src.bigquery_writer import BigQueryWriter
-from src.report_manager import ReportManager
-from src.models import DateRange, Dimension, Metric, RunReportRequest
-from config import (
-    GCPConfig,
-    TableConfig,
-    GA4Properties,
-    DateConfig,
-    CloudRunConfig,
-    get_full_config
-)
 
 # Configurar logging
 logging.basicConfig(
@@ -48,679 +40,365 @@ app = Flask(__name__)
 
 
 # =============================================================================
-# FUNÇÕES AUXILIARES
+# CONFIGURAÇÕES
 # =============================================================================
 
-def get_credentials(project_id: str = None, secret_id: str = None) -> Credentials:
+class Config:
+    """Configurações da API."""
+    PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "cadastra-yduqs-uat")
+    DATASET_ID = os.environ.get("BQ_DATASET_ID", "RAW")
+    CREDENTIALS_PATH = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", None)
+    USE_SECRET_MANAGER = os.environ.get("USE_SECRET_MANAGER", "true").lower() == "true"
+
+
+# =============================================================================
+# FUNÇÕES PRINCIPAIS
+# =============================================================================
+
+def run_extraction(
+    property_id: str,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    load_to_bigquery: bool = True
+) -> Dict[str, Any]:
     """
-    Obtém as credenciais do Secret Manager.
+    Executa a extração completa de dados do GA4.
+    
+    Esta é a função principal que orquestra todo o processo:
+    1. Autentica no GCP
+    2. Extrai dados do GA4
+    3. Carrega no BigQuery (opcional)
     
     Args:
-        project_id: ID do projeto GCP (usa config se não fornecido)
-        secret_id: ID do secret (usa config se não fornecido)
+        property_id: ID da propriedade GA4
+        start_date: Data de início (YYYY-MM-DD)
+        end_date: Data de fim (YYYY-MM-DD)
+        load_to_bigquery: Se True, carrega os dados no BigQuery
         
     Returns:
-        Objeto Credentials
+        Resultado da extração e carga
     """
-    project_id = project_id or GCPConfig.PROJECT_ID
-    secret_id = secret_id or GCPConfig.SECRET_ID
+    # Importar módulos locais
+    from auth import initialize_all_clients
+    from ga4 import extract_all_reports, get_date_range
+    from bigquery import load_all_reports_to_bigquery
     
-    secret_manager = SecretManager()
-    secret_value = secret_manager.access_secret_version(
-        secret_id=secret_id,
-        project_id=project_id
-    )
+    logger.info("=" * 60)
+    logger.info("INICIANDO EXTRAÇÃO GA4")
+    logger.info("=" * 60)
     
-    service_account_json = json.loads(secret_value)
-    return Credentials.from_service_account_info(service_account_json)
-
-
-def validate_request_json() -> tuple:
-    """
-    Valida se a requisição contém JSON válido.
+    # 1. AUTENTICAÇÃO
+    logger.info("Passo 1: Autenticando no GCP...")
+    try:
+        clients = initialize_all_clients(
+            project_id=Config.PROJECT_ID,
+            credentials_path=Config.CREDENTIALS_PATH,
+            use_secret_manager=Config.USE_SECRET_MANAGER
+        )
+    except Exception as e:
+        logger.error(f"Falha na autenticação: {e}")
+        return {
+            "status": "error",
+            "step": "authentication",
+            "message": str(e)
+        }
     
-    Returns:
-        Tuple (is_valid, data_or_error)
-    """
-    if not request.is_json:
-        return False, {'error': 'Request deve ser JSON'}
-    return True, request.get_json()
+    # 2. CALCULAR DATAS
+    if not start_date or not end_date:
+        start_date, end_date = get_date_range()
+    
+    logger.info(f"Período: {start_date} a {end_date}")
+    
+    # 3. EXTRAÇÃO DO GA4
+    logger.info("Passo 2: Extraindo dados do GA4...")
+    try:
+        extraction_results = extract_all_reports(
+            ga4_client=clients["ga4"],
+            property_id=property_id,
+            start_date=start_date,
+            end_date=end_date
+        )
+    except Exception as e:
+        logger.error(f"Falha na extração: {e}")
+        return {
+            "status": "error",
+            "step": "extraction",
+            "message": str(e)
+        }
+    
+    # 4. CARGA NO BIGQUERY
+    if load_to_bigquery:
+        logger.info("Passo 3: Carregando dados no BigQuery...")
+        try:
+            load_results = load_all_reports_to_bigquery(
+                bq_client=clients["bigquery"],
+                project_id=Config.PROJECT_ID,
+                dataset_id=Config.DATASET_ID,
+                extraction_results=extraction_results
+            )
+        except Exception as e:
+            logger.error(f"Falha na carga: {e}")
+            return {
+                "status": "error",
+                "step": "load",
+                "message": str(e),
+                "extraction": extraction_results["summary"]
+            }
+    else:
+        load_results = {"summary": {"message": "Carga no BigQuery desabilitada"}}
+    
+    # 5. RESULTADO FINAL
+    logger.info("=" * 60)
+    logger.info("EXTRAÇÃO CONCLUÍDA COM SUCESSO")
+    logger.info("=" * 60)
+    
+    return {
+        "status": "success",
+        "property_id": property_id,
+        "period": {"start": start_date, "end": end_date},
+        "extraction": extraction_results["summary"],
+        "load": load_results.get("summary", {})
+    }
 
 
 # =============================================================================
-# ENDPOINTS DE HEALTH CHECK E STATUS
+# ENDPOINTS DA API
 # =============================================================================
 
-@app.route('/', methods=['GET'])
+@app.route("/", methods=["GET"])
 def health_check():
-    """
-    Health check endpoint.
-    
-    Returns:
-        JSON com status da API
-    """
+    """Health check endpoint."""
     return jsonify({
-        'status': 'healthy',
-        'service': 'Google Analytics 4 API',
-        'version': '2.0.0',
-        'timestamp': datetime.utcnow().isoformat(),
-        'project_id': GCPConfig.PROJECT_ID,
-        'dataset_id': GCPConfig.DATASET_ID
-    }), 200
+        "status": "healthy",
+        "service": "GA4 API Extractor",
+        "version": "2.0.0",
+        "timestamp": datetime.now().isoformat(),
+        "config": {
+            "project_id": Config.PROJECT_ID,
+            "dataset_id": Config.DATASET_ID
+        }
+    })
 
 
-@app.route('/config', methods=['GET'])
-def get_config():
-    """
-    Retorna a configuração atual da API.
+@app.route("/test-auth", methods=["GET"])
+def test_auth():
+    """Testa a autenticação no GCP."""
+    from auth import test_authentication
     
-    Returns:
-        JSON com configurações (sem dados sensíveis)
-    """
-    config = get_full_config()
-    # Remover informações sensíveis
-    config.pop('properties', None)
+    success = test_authentication(Config.CREDENTIALS_PATH)
     
     return jsonify({
-        'status': 'success',
-        'config': config
-    }), 200
+        "status": "success" if success else "error",
+        "message": "Autenticação OK" if success else "Falha na autenticação"
+    })
 
 
-@app.route('/tables', methods=['GET'])
-def list_tables():
-    """
-    Lista todas as tabelas configuradas.
+@app.route("/reports", methods=["GET"])
+def list_reports():
+    """Lista todos os relatórios disponíveis."""
+    from ga4 import list_available_reports
     
-    Returns:
-        JSON com lista de tabelas
-    """
-    return jsonify({
-        'status': 'success',
-        'tables': {
-            'dimensions': list(TableConfig.TABLES_DIMENSIONS.keys()),
-            'metrics': list(TableConfig.TABLES_METRICS.keys())
-        },
-        'total': len(TableConfig.get_all_tables())
-    }), 200
+    return jsonify(list_available_reports())
 
 
-@app.route('/reports/available', methods=['GET'])
-def list_available_reports():
+@app.route("/extract", methods=["POST"])
+def extract():
     """
-    Lista todos os relatórios disponíveis.
+    Extrai dados do GA4 e carrega no BigQuery.
     
-    Returns:
-        JSON com relatórios disponíveis
+    Request Body:
+        {
+            "property_id": "123456789",
+            "start_date": "2024-01-01",  // opcional
+            "end_date": "2024-01-01",    // opcional
+            "load_to_bigquery": true     // opcional, padrão true
+        }
     """
-    return jsonify({
-        'status': 'success',
-        'reports': ReportManager.get_available_reports()
-    }), 200
-
-
-# =============================================================================
-# ENDPOINTS DE RELATÓRIOS DE DIMENSÕES
-# =============================================================================
-
-@app.route('/report/dimension/<table_name>', methods=['POST'])
-def run_dimension_report(table_name: str):
-    """
-    Executa um relatório de dimensão específico.
+    data = request.get_json() or {}
     
-    Path Parameters:
-        table_name: Nome da tabela (ex: TB_001_GA4_DIM_USUARIO)
-    
-    Request Body (JSON):
-    {
-        "property_id": "123456789",
-        "start_date": "yesterday",  // opcional, default: yesterday
-        "end_date": "yesterday",    // opcional, default: yesterday
-        "project_id": "...",        // opcional, usa config
-        "secret_id": "..."          // opcional, usa config
-    }
-    
-    Returns:
-        JSON com status e informações do processamento
-    """
-    try:
-        # Validar request
-        is_valid, data = validate_request_json()
-        if not is_valid:
-            return jsonify(data), 400
-        
-        # Extrair parâmetros
-        property_id = data.get('property_id')
-        if not property_id:
-            return jsonify({
-                'error': 'property_id é obrigatório'
-            }), 400
-        
-        start_date = data.get('start_date', DateConfig.DEFAULT_START_DATE)
-        end_date = data.get('end_date', DateConfig.DEFAULT_END_DATE)
-        project_id = data.get('project_id', GCPConfig.PROJECT_ID)
-        secret_id = data.get('secret_id', GCPConfig.SECRET_ID)
-        
-        logger.info(f"Executando relatório de dimensão: {table_name} para property {property_id}")
-        
-        # Obter credenciais
-        credentials = get_credentials(project_id, secret_id)
-        
-        # Criar ReportManager
-        manager = ReportManager(
-            credentials=credentials,
-            property_id=property_id,
-            project_id=project_id,
-            dataset_id=GCPConfig.DATASET_ID
-        )
-        
-        # Executar relatório
-        result = manager.run_dimension_report(
-            table_name=table_name,
-            start_date=start_date,
-            end_date=end_date
-        )
-        
-        return jsonify(result), 200
-        
-    except ValueError as e:
-        logger.error(f"Erro de validação: {str(e)}")
+    property_id = data.get("property_id")
+    if not property_id:
         return jsonify({
-            'status': 'error',
-            'error': str(e)
+            "status": "error",
+            "message": "property_id é obrigatório"
         }), 400
-        
-    except Exception as e:
-        logger.error(f"Erro ao processar relatório: {str(e)}", exc_info=True)
-        return jsonify({
-            'status': 'error',
-            'error': str(e)
-        }), 500
-
-
-@app.route('/report/dimensions/all', methods=['POST'])
-def run_all_dimension_reports():
-    """
-    Executa todos os relatórios de dimensão.
     
-    Request Body (JSON):
-    {
-        "property_id": "123456789",
-        "start_date": "yesterday",
-        "end_date": "yesterday"
-    }
+    start_date = data.get("start_date")
+    end_date = data.get("end_date")
+    load_to_bigquery = data.get("load_to_bigquery", True)
     
-    Returns:
-        JSON com resultados de todos os relatórios
-    """
     try:
-        is_valid, data = validate_request_json()
-        if not is_valid:
-            return jsonify(data), 400
-        
-        property_id = data.get('property_id')
-        if not property_id:
-            return jsonify({'error': 'property_id é obrigatório'}), 400
-        
-        start_date = data.get('start_date', DateConfig.DEFAULT_START_DATE)
-        end_date = data.get('end_date', DateConfig.DEFAULT_END_DATE)
-        project_id = data.get('project_id', GCPConfig.PROJECT_ID)
-        secret_id = data.get('secret_id', GCPConfig.SECRET_ID)
-        
-        logger.info(f"Executando todos os relatórios de dimensão para property {property_id}")
-        
-        credentials = get_credentials(project_id, secret_id)
-        
-        manager = ReportManager(
-            credentials=credentials,
+        result = run_extraction(
             property_id=property_id,
-            project_id=project_id,
-            dataset_id=GCPConfig.DATASET_ID
-        )
-        
-        results = manager.run_all_dimension_reports(start_date, end_date)
-        
-        return jsonify({
-            'status': 'success',
-            'property_id': property_id,
-            'results': results
-        }), 200
-        
-    except Exception as e:
-        logger.error(f"Erro ao processar relatórios: {str(e)}", exc_info=True)
-        return jsonify({
-            'status': 'error',
-            'error': str(e)
-        }), 500
-
-
-# =============================================================================
-# ENDPOINTS DE RELATÓRIOS DE MÉTRICAS
-# =============================================================================
-
-@app.route('/report/metric/<table_name>', methods=['POST'])
-def run_metric_report(table_name: str):
-    """
-    Executa um relatório de métrica específico.
-    
-    Path Parameters:
-        table_name: Nome da tabela (ex: TB_008_GA4_MET_USUARIOS)
-    
-    Request Body (JSON):
-    {
-        "property_id": "123456789",
-        "start_date": "yesterday",
-        "end_date": "yesterday"
-    }
-    
-    Returns:
-        JSON com status e informações do processamento
-    """
-    try:
-        is_valid, data = validate_request_json()
-        if not is_valid:
-            return jsonify(data), 400
-        
-        property_id = data.get('property_id')
-        if not property_id:
-            return jsonify({'error': 'property_id é obrigatório'}), 400
-        
-        start_date = data.get('start_date', DateConfig.DEFAULT_START_DATE)
-        end_date = data.get('end_date', DateConfig.DEFAULT_END_DATE)
-        project_id = data.get('project_id', GCPConfig.PROJECT_ID)
-        secret_id = data.get('secret_id', GCPConfig.SECRET_ID)
-        
-        logger.info(f"Executando relatório de métrica: {table_name} para property {property_id}")
-        
-        credentials = get_credentials(project_id, secret_id)
-        
-        manager = ReportManager(
-            credentials=credentials,
-            property_id=property_id,
-            project_id=project_id,
-            dataset_id=GCPConfig.DATASET_ID
-        )
-        
-        result = manager.run_metric_report(
-            table_name=table_name,
             start_date=start_date,
-            end_date=end_date
+            end_date=end_date,
+            load_to_bigquery=load_to_bigquery
         )
         
-        return jsonify(result), 200
-        
-    except ValueError as e:
-        logger.error(f"Erro de validação: {str(e)}")
-        return jsonify({
-            'status': 'error',
-            'error': str(e)
-        }), 400
+        status_code = 200 if result.get("status") == "success" else 500
+        return jsonify(result), status_code
         
     except Exception as e:
-        logger.error(f"Erro ao processar relatório: {str(e)}", exc_info=True)
+        logger.error(f"Erro na extração: {e}")
         return jsonify({
-            'status': 'error',
-            'error': str(e)
+            "status": "error",
+            "message": str(e)
         }), 500
 
 
-@app.route('/report/metrics/all', methods=['POST'])
-def run_all_metric_reports():
+@app.route("/extract/dimension/<report_key>", methods=["POST"])
+def extract_dimension(report_key: str):
     """
-    Executa todos os relatórios de métrica.
+    Extrai um relatório de dimensão específico.
     
-    Request Body (JSON):
-    {
-        "property_id": "123456789",
-        "start_date": "yesterday",
-        "end_date": "yesterday"
-    }
-    
-    Returns:
-        JSON com resultados de todos os relatórios
+    Args:
+        report_key: Chave do relatório (USUARIO, GEOGRAFICA, etc.)
     """
+    from auth import initialize_all_clients
+    from ga4 import extract_dimension_report, get_date_range, DIMENSION_REPORTS
+    from bigquery import load_report_to_bigquery
+    
+    data = request.get_json() or {}
+    
+    property_id = data.get("property_id")
+    if not property_id:
+        return jsonify({"status": "error", "message": "property_id é obrigatório"}), 400
+    
+    report_key = report_key.upper()
+    if report_key not in DIMENSION_REPORTS:
+        return jsonify({
+            "status": "error",
+            "message": f"Relatório não encontrado: {report_key}",
+            "available": list(DIMENSION_REPORTS.keys())
+        }), 404
+    
+    start_date = data.get("start_date")
+    end_date = data.get("end_date")
+    if not start_date or not end_date:
+        start_date, end_date = get_date_range()
+    
     try:
-        is_valid, data = validate_request_json()
-        if not is_valid:
-            return jsonify(data), 400
-        
-        property_id = data.get('property_id')
-        if not property_id:
-            return jsonify({'error': 'property_id é obrigatório'}), 400
-        
-        start_date = data.get('start_date', DateConfig.DEFAULT_START_DATE)
-        end_date = data.get('end_date', DateConfig.DEFAULT_END_DATE)
-        project_id = data.get('project_id', GCPConfig.PROJECT_ID)
-        secret_id = data.get('secret_id', GCPConfig.SECRET_ID)
-        
-        logger.info(f"Executando todos os relatórios de métrica para property {property_id}")
-        
-        credentials = get_credentials(project_id, secret_id)
-        
-        manager = ReportManager(
-            credentials=credentials,
-            property_id=property_id,
-            project_id=project_id,
-            dataset_id=GCPConfig.DATASET_ID
+        clients = initialize_all_clients(
+            project_id=Config.PROJECT_ID,
+            credentials_path=Config.CREDENTIALS_PATH,
+            use_secret_manager=Config.USE_SECRET_MANAGER
         )
         
-        results = manager.run_all_metric_reports(start_date, end_date)
+        report = extract_dimension_report(
+            clients["ga4"], property_id, report_key, start_date, end_date
+        )
+        
+        load_result = load_report_to_bigquery(
+            clients["bigquery"], Config.PROJECT_ID, Config.DATASET_ID, report
+        )
         
         return jsonify({
-            'status': 'success',
-            'property_id': property_id,
-            'results': results
-        }), 200
+            "status": "success",
+            "report": report_key,
+            "extraction": {"rows": report["rows_count"]},
+            "load": load_result
+        })
         
     except Exception as e:
-        logger.error(f"Erro ao processar relatórios: {str(e)}", exc_info=True)
+        logger.error(f"Erro: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route("/extract/metric/<report_key>", methods=["POST"])
+def extract_metric(report_key: str):
+    """
+    Extrai um relatório de métrica específico.
+    
+    Args:
+        report_key: Chave do relatório (USUARIOS, SESSAO, etc.)
+    """
+    from auth import initialize_all_clients
+    from ga4 import extract_metric_report, get_date_range, METRIC_REPORTS
+    from bigquery import load_report_to_bigquery
+    
+    data = request.get_json() or {}
+    
+    property_id = data.get("property_id")
+    if not property_id:
+        return jsonify({"status": "error", "message": "property_id é obrigatório"}), 400
+    
+    report_key = report_key.upper()
+    if report_key not in METRIC_REPORTS:
         return jsonify({
-            'status': 'error',
-            'error': str(e)
-        }), 500
-
-
-# =============================================================================
-# ENDPOINT PRINCIPAL - EXECUTAR TODOS OS RELATÓRIOS
-# =============================================================================
-
-@app.route('/report/all', methods=['POST'])
-def run_all_reports():
-    """
-    Executa todos os relatórios (dimensões e métricas) para uma propriedade.
+            "status": "error",
+            "message": f"Relatório não encontrado: {report_key}",
+            "available": list(METRIC_REPORTS.keys())
+        }), 404
     
-    Este é o endpoint principal para a carga diária de dados.
+    start_date = data.get("start_date")
+    end_date = data.get("end_date")
+    if not start_date or not end_date:
+        start_date, end_date = get_date_range()
     
-    Request Body (JSON):
-    {
-        "property_id": "123456789",
-        "start_date": "yesterday",
-        "end_date": "yesterday"
-    }
-    
-    Returns:
-        JSON com resultados de todos os relatórios
-    """
     try:
-        is_valid, data = validate_request_json()
-        if not is_valid:
-            return jsonify(data), 400
-        
-        property_id = data.get('property_id')
-        if not property_id:
-            return jsonify({'error': 'property_id é obrigatório'}), 400
-        
-        start_date = data.get('start_date', DateConfig.DEFAULT_START_DATE)
-        end_date = data.get('end_date', DateConfig.DEFAULT_END_DATE)
-        project_id = data.get('project_id', GCPConfig.PROJECT_ID)
-        secret_id = data.get('secret_id', GCPConfig.SECRET_ID)
-        
-        logger.info(f"Executando TODOS os relatórios para property {property_id}")
-        
-        credentials = get_credentials(project_id, secret_id)
-        
-        manager = ReportManager(
-            credentials=credentials,
-            property_id=property_id,
-            project_id=project_id,
-            dataset_id=GCPConfig.DATASET_ID
+        clients = initialize_all_clients(
+            project_id=Config.PROJECT_ID,
+            credentials_path=Config.CREDENTIALS_PATH,
+            use_secret_manager=Config.USE_SECRET_MANAGER
         )
         
-        results = manager.run_all_reports(start_date, end_date)
+        report = extract_metric_report(
+            clients["ga4"], property_id, report_key, start_date, end_date
+        )
+        
+        load_result = load_report_to_bigquery(
+            clients["bigquery"], Config.PROJECT_ID, Config.DATASET_ID, report
+        )
         
         return jsonify({
-            'status': 'success',
-            'property_id': property_id,
-            'date_range': {
-                'start_date': start_date,
-                'end_date': end_date
-            },
-            'results': results
-        }), 200
+            "status": "success",
+            "report": report_key,
+            "extraction": {"rows": report["rows_count"]},
+            "load": load_result
+        })
         
     except Exception as e:
-        logger.error(f"Erro ao processar relatórios: {str(e)}", exc_info=True)
-        return jsonify({
-            'status': 'error',
-            'error': str(e)
-        }), 500
-
-
-@app.route('/report/batch', methods=['POST'])
-def run_batch_reports():
-    """
-    Executa relatórios para múltiplas propriedades.
-    
-    Request Body (JSON):
-    {
-        "property_ids": ["123456789", "987654321"],
-        "start_date": "yesterday",
-        "end_date": "yesterday"
-    }
-    
-    Returns:
-        JSON com resultados de todas as propriedades
-    """
-    try:
-        is_valid, data = validate_request_json()
-        if not is_valid:
-            return jsonify(data), 400
-        
-        property_ids = data.get('property_ids', [])
-        if not property_ids:
-            return jsonify({'error': 'property_ids é obrigatório e deve ser uma lista'}), 400
-        
-        start_date = data.get('start_date', DateConfig.DEFAULT_START_DATE)
-        end_date = data.get('end_date', DateConfig.DEFAULT_END_DATE)
-        project_id = data.get('project_id', GCPConfig.PROJECT_ID)
-        secret_id = data.get('secret_id', GCPConfig.SECRET_ID)
-        
-        logger.info(f"Executando relatórios em lote para {len(property_ids)} propriedades")
-        
-        credentials = get_credentials(project_id, secret_id)
-        
-        all_results = {}
-        
-        for property_id in property_ids:
-            try:
-                manager = ReportManager(
-                    credentials=credentials,
-                    property_id=property_id,
-                    project_id=project_id,
-                    dataset_id=GCPConfig.DATASET_ID
-                )
-                
-                results = manager.run_all_reports(start_date, end_date)
-                all_results[property_id] = {
-                    'status': 'success',
-                    'results': results
-                }
-                
-            except Exception as e:
-                logger.error(f"Erro ao processar property {property_id}: {str(e)}")
-                all_results[property_id] = {
-                    'status': 'error',
-                    'error': str(e)
-                }
-        
-        # Calcular estatísticas gerais
-        successful = sum(1 for r in all_results.values() if r['status'] == 'success')
-        failed = len(all_results) - successful
-        
-        return jsonify({
-            'status': 'success',
-            'summary': {
-                'total_properties': len(property_ids),
-                'successful': successful,
-                'failed': failed
-            },
-            'date_range': {
-                'start_date': start_date,
-                'end_date': end_date
-            },
-            'results': all_results
-        }), 200
-        
-    except Exception as e:
-        logger.error(f"Erro ao processar relatórios em lote: {str(e)}", exc_info=True)
-        return jsonify({
-            'status': 'error',
-            'error': str(e)
-        }), 500
+        logger.error(f"Erro: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 
 # =============================================================================
-# ENDPOINTS LEGADOS (MANTIDOS PARA COMPATIBILIDADE)
-# =============================================================================
-
-@app.route('/run-report', methods=['POST'])
-def run_report_legacy():
-    """
-    Endpoint legado para executar relatório customizado do GA4.
-    Mantido para compatibilidade com versões anteriores.
-    
-    Request Body (JSON):
-    {
-        "project_id": "your-project-id",
-        "secret_id": "ga4-credentials",
-        "property_id": "123456789",
-        "bigquery_table": "ga4_daily_report",
-        "bigquery_dataset": "RAW",
-        "date_ranges": [
-            {
-                "start_date": "7daysAgo",
-                "end_date": "today"
-            }
-        ],
-        "dimensions": [
-            {"name": "country"},
-            {"name": "city"}
-        ],
-        "metrics": [
-            {"name": "activeUsers"},
-            {"name": "sessions"}
-        ],
-        "limit": 10000
-    }
-    
-    Returns:
-        JSON com status e informações do processamento
-    """
-    try:
-        is_valid, data = validate_request_json()
-        if not is_valid:
-            return jsonify(data), 400
-        
-        # Extrair parâmetros obrigatórios
-        project_id = data.get('project_id', GCPConfig.PROJECT_ID)
-        secret_id = data.get('secret_id', GCPConfig.SECRET_ID)
-        property_id = data.get('property_id')
-        bigquery_table = data.get('bigquery_table')
-        
-        if not all([property_id, bigquery_table]):
-            return jsonify({
-                'error': 'Parâmetros obrigatórios faltando',
-                'required': ['property_id', 'bigquery_table']
-            }), 400
-        
-        logger.info(f"[LEGACY] Processando relatório para property {property_id}")
-        
-        # Buscar credenciais
-        credentials = get_credentials(project_id, secret_id)
-        
-        # Inicializar cliente GA4
-        ga4 = GoogleAnalytics4(
-            property_id=property_id,
-            credentials=credentials
-        )
-        
-        # Preparar requisição
-        date_ranges = [
-            DateRange(**dr) for dr in data.get('date_ranges', [
-                {'start_date': 'yesterday', 'end_date': 'yesterday'}
-            ])
-        ]
-        
-        dimensions = [
-            Dimension(**dim) for dim in data.get('dimensions', [])
-        ]
-        
-        metrics = [
-            Metric(**met) for met in data.get('metrics', [])
-        ]
-        
-        if not dimensions and not metrics:
-            return jsonify({
-                'error': 'Deve especificar ao menos uma dimension ou metric'
-            }), 400
-        
-        report_request = RunReportRequest(
-            property_id=property_id,
-            date_ranges=date_ranges,
-            dimensions=dimensions,
-            metrics=metrics,
-            limit=data.get('limit', 10000),
-            offset=data.get('offset', 0)
-        )
-        
-        # Executar relatório
-        response = ga4.run_report(report_request)
-        logger.info(f"Relatório executado: {response['row_count']} linhas")
-        
-        # Salvar no BigQuery
-        bigquery_dataset = data.get('bigquery_dataset', GCPConfig.DATASET_ID)
-        bq_writer = BigQueryWriter(
-            project_id=project_id,
-            dataset_id=bigquery_dataset,
-            credentials=credentials
-        )
-        
-        bq_writer.write_ga4_data(
-            table_id=bigquery_table,
-            data=response,
-            auto_create=True
-        )
-        
-        return jsonify({
-            'status': 'success',
-            'message': 'Relatório processado e salvo no BigQuery',
-            'details': {
-                'property_id': property_id,
-                'rows_processed': response['row_count'],
-                'bigquery_table': f"{project_id}.{bigquery_dataset}.{bigquery_table}",
-                'dimensions': response['dimension_headers'],
-                'metrics': [m['name'] for m in response['metric_headers']]
-            }
-        }), 200
-        
-    except Exception as e:
-        logger.error(f"Erro ao processar relatório: {str(e)}", exc_info=True)
-        return jsonify({
-            'status': 'error',
-            'error': str(e)
-        }), 500
-
-
-# =============================================================================
-# FUNÇÃO MAIN PARA CLOUD RUN
+# FUNÇÃO PRINCIPAL
 # =============================================================================
 
 def main():
-    """
-    Função principal para execução no Cloud Run.
+    """Função principal para iniciar o servidor ou executar testes."""
     
-    Esta função é chamada quando o serviço é iniciado.
-    O Cloud Run espera que a aplicação escute na porta definida
-    pela variável de ambiente PORT.
-    """
-    port = int(os.environ.get('PORT', CloudRunConfig.PORT))
+    # Verificar argumentos de linha de comando
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "--test":
+            # Modo de teste
+            logger.info("Executando teste de autenticação...")
+            from auth import test_authentication
+            success = test_authentication(Config.CREDENTIALS_PATH)
+            sys.exit(0 if success else 1)
+        
+        elif sys.argv[1] == "--extract":
+            # Modo de extração via CLI
+            if len(sys.argv) < 3:
+                print("Uso: python main.py --extract <property_id> [start_date] [end_date]")
+                sys.exit(1)
+            
+            property_id = sys.argv[2]
+            start_date = sys.argv[3] if len(sys.argv) > 3 else None
+            end_date = sys.argv[4] if len(sys.argv) > 4 else None
+            
+            result = run_extraction(property_id, start_date, end_date)
+            print(result)
+            sys.exit(0 if result.get("status") == "success" else 1)
     
-    logger.info(f"Iniciando API Google Analytics 4 na porta {port}")
-    logger.info(f"Projeto GCP: {GCPConfig.PROJECT_ID}")
-    logger.info(f"Dataset: {GCPConfig.DATASET_ID}")
+    # Modo servidor
+    port = int(os.environ.get("PORT", 8080))
+    debug = os.environ.get("DEBUG", "false").lower() == "true"
     
-    app.run(host='0.0.0.0', port=port, debug=False)
+    logger.info(f"Iniciando servidor na porta {port}")
+    app.run(host="0.0.0.0", port=port, debug=debug)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
