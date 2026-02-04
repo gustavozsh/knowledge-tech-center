@@ -132,11 +132,11 @@ class BigQueryClient:
         # Configurar particionamento por dia
         table.time_partitioning = bigquery.TimePartitioning(
             type_=bigquery.TimePartitioningType.DAY,
-            field="date"
+            field="DATE"
         )
 
         # Configurar clustering (opcional, melhora performance de queries)
-        table.clustering_fields = ["property_id", "ga4_session_key"]
+        table.clustering_fields = ["PROPERTY_ID", "GA4_SESSION_KEY"]
 
         try:
             self.client.create_table(table)
@@ -204,7 +204,7 @@ class BigQueryClient:
 
         query = f"""
         DELETE FROM `{table_ref}`
-        WHERE date = '{partition_date}'
+        WHERE DATE = '{partition_date}'
         """
 
         try:
@@ -292,7 +292,7 @@ class BigQueryClient:
 
         # Deletar particao existente se necessario
         if replace_partition and data:
-            partition_date = data[0].get("date")
+            partition_date = data[0].get("DATE")
             if partition_date:
                 self.delete_partition(table_name, partition_date)
 

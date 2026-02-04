@@ -30,14 +30,14 @@ API de extracao de dados de campanhas do Google Analytics 4 para BigQuery, otimi
 
 ## Estrutura das Tabelas
 
-Todas as tabelas possuem os seguintes campos base:
+Todas as tabelas possuem os seguintes campos base (em UPPERCASE):
 
 ```sql
-id              STRING    REQUIRED  -- Chave primaria (UUID)
-ga4_session_key STRING    REQUIRED  -- Chave estrangeira (property_id + date)
-property_id     STRING    REQUIRED  -- ID da propriedade GA4
-date            DATE      REQUIRED  -- Data do registro (particionamento)
-last_update     TIMESTAMP REQUIRED  -- Timestamp do carregamento
+PK_{NOME_TABELA}  STRING    REQUIRED  -- Chave primaria (UUID) - Ex: PK_GA4_DIM_CAMPAIGN
+GA4_SESSION_KEY   STRING    REQUIRED  -- Chave estrangeira (PROPERTY_ID + DATE)
+PROPERTY_ID       STRING    REQUIRED  -- ID da propriedade GA4
+DATE              DATE      REQUIRED  -- Data do registro (particionamento)
+LAST_UPDATE       TIMESTAMP REQUIRED  -- Timestamp do carregamento
 ```
 
 ## Instalacao
@@ -213,19 +213,19 @@ ga4-campaign/
 
 ## Joins entre Tabelas
 
-As tabelas podem ser relacionadas usando a chave `ga4_session_key`:
+As tabelas podem ser relacionadas usando a chave `GA4_SESSION_KEY`:
 
 ```sql
 SELECT
-    c.campaign_name,
-    c.sessions,
-    g.country,
-    g.city
+    c.CAMPAIGN_NAME,
+    c.SESSIONS,
+    g.COUNTRY,
+    g.CITY
 FROM `projeto.dataset.GA4_DIM_CAMPAIGN` c
 JOIN `projeto.dataset.GA4_DIM_GEOGRAPHIC` g
-    ON c.ga4_session_key = g.ga4_session_key
-    AND c.date = g.date
-WHERE c.date = '2024-01-01'
+    ON c.GA4_SESSION_KEY = g.GA4_SESSION_KEY
+    AND c.DATE = g.DATE
+WHERE c.DATE = '2024-01-01'
 ```
 
 ## Referencia

@@ -23,20 +23,20 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def camel_to_snake(name: str) -> str:
+def camel_to_upper_snake(name: str) -> str:
     """
-    Converte camelCase para snake_case.
+    Converte camelCase para UPPER_SNAKE_CASE.
 
     Args:
         name: String em camelCase
 
     Returns:
-        String em snake_case
+        String em UPPER_SNAKE_CASE
     """
     # Trata casos especiais como 'ID' no meio da string
     name = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
     name = re.sub('([a-z0-9])([A-Z])', r'\1_\2', name)
-    return name.lower()
+    return name.upper()
 
 
 def get_date_range(days_back: int = 1, timezone: str = None) -> tuple:
@@ -149,14 +149,14 @@ def run_report(
         for i, dim_value in enumerate(row.dimension_values):
             dim_name = valid_dimensions[i]
             # Converter para snake_case
-            field_name = camel_to_snake(dim_name)
+            field_name = camel_to_upper_snake(dim_name)
             row_data[field_name] = dim_value.value
 
         # Adicionar metricas
         for i, metric_value in enumerate(row.metric_values):
             metric_name = metrics[i]
             # Converter para snake_case
-            field_name = camel_to_snake(metric_name)
+            field_name = camel_to_upper_snake(metric_name)
 
             # Converter para numero se possivel
             try:
@@ -216,20 +216,23 @@ def extract_dimension(
     execution_time = datetime.utcnow().isoformat() + "Z"
     processed_data = []
 
+    # Nome do campo PK para esta tabela
+    pk_field_name = f"PK_{schema.table_name}"
+
     for row in raw_data:
         # Obter a data do registro
-        row_date = row.get("date", start_date)
+        row_date = row.get("DATE", start_date)
 
-        # Adicionar campos base
+        # Adicionar campos base em UPPERCASE
         processed_row = {
-            "id": generate_id(),
-            "ga4_session_key": generate_session_key(clean_property_id, row_date),
-            "property_id": clean_property_id,
-            "date": row_date,
-            "last_update": execution_time,
+            pk_field_name: generate_id(),
+            "GA4_SESSION_KEY": generate_session_key(clean_property_id, row_date),
+            "PROPERTY_ID": clean_property_id,
+            "DATE": row_date,
+            "LAST_UPDATE": execution_time,
         }
 
-        # Adicionar dados extraidos
+        # Adicionar dados extraidos (ja estao em UPPERCASE)
         processed_row.update(row)
         processed_data.append(processed_row)
 
@@ -402,12 +405,12 @@ def run_batch_report(
 
                     # Dimensoes
                     for j, dim_value in enumerate(row.dimension_values):
-                        field_name = camel_to_snake(dim_headers[j])
+                        field_name = camel_to_upper_snake(dim_headers[j])
                         row_data[field_name] = dim_value.value
 
                     # Metricas
                     for j, metric_value in enumerate(row.metric_values):
-                        field_name = camel_to_snake(metric_headers[j])
+                        field_name = camel_to_upper_snake(metric_headers[j])
                         try:
                             if "." in metric_value.value:
                                 row_data[field_name] = float(metric_value.value)

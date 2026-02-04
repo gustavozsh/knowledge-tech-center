@@ -3,11 +3,11 @@ Definicoes de Schema para BigQuery.
 
 Este modulo contem todos os schemas das tabelas GA4.
 Cada tabela possui:
-    - id: Chave primaria (UUID), unica, not null, required
-    - ga4_session_key: Chave estrangeira para relacionar tabelas
-    - last_update: Timestamp do carregamento no BigQuery
+    - PK_{NOME_DA_TABELA}: Chave primaria (UUID), unica, not null, required
+    - GA4_SESSION_KEY: Chave estrangeira para relacionar tabelas
+    - LAST_UPDATE: Timestamp do carregamento no BigQuery
 
-As tabelas sao particionadas por dia (campo 'date').
+As tabelas sao particionadas por dia (campo 'DATE').
 """
 
 from typing import Dict, List, Any
@@ -24,42 +24,48 @@ class TableSchema:
     schema_fields: List[Dict[str, Any]] = field(default_factory=list)
 
 
-# =============================================================================
-# CAMPOS BASE (presentes em todas as tabelas)
-# =============================================================================
+def get_base_fields(table_name: str) -> List[Dict[str, Any]]:
+    """
+    Retorna os campos base para uma tabela.
 
-BASE_FIELDS = [
-    {
-        "name": "id",
-        "type": "STRING",
-        "mode": "REQUIRED",
-        "description": "Chave primaria unica (UUID)"
-    },
-    {
-        "name": "ga4_session_key",
-        "type": "STRING",
-        "mode": "REQUIRED",
-        "description": "Chave estrangeira para relacionar tabelas GA4 (property_id + date)"
-    },
-    {
-        "name": "property_id",
-        "type": "STRING",
-        "mode": "REQUIRED",
-        "description": "ID da propriedade GA4"
-    },
-    {
-        "name": "date",
-        "type": "DATE",
-        "mode": "REQUIRED",
-        "description": "Data do registro (campo de particionamento)"
-    },
-    {
-        "name": "last_update",
-        "type": "TIMESTAMP",
-        "mode": "REQUIRED",
-        "description": "Timestamp da execucao e carregamento no BigQuery"
-    },
-]
+    Args:
+        table_name: Nome da tabela (sem prefixo)
+
+    Returns:
+        Lista de campos base
+    """
+    return [
+        {
+            "name": f"PK_{table_name}",
+            "type": "STRING",
+            "mode": "REQUIRED",
+            "description": "Chave primaria unica (UUID)"
+        },
+        {
+            "name": "GA4_SESSION_KEY",
+            "type": "STRING",
+            "mode": "REQUIRED",
+            "description": "Chave estrangeira para relacionar tabelas GA4 (PROPERTY_ID + DATE)"
+        },
+        {
+            "name": "PROPERTY_ID",
+            "type": "STRING",
+            "mode": "REQUIRED",
+            "description": "ID da propriedade GA4"
+        },
+        {
+            "name": "DATE",
+            "type": "DATE",
+            "mode": "REQUIRED",
+            "description": "Data do registro (campo de particionamento)"
+        },
+        {
+            "name": "LAST_UPDATE",
+            "type": "TIMESTAMP",
+            "mode": "REQUIRED",
+            "description": "Timestamp da execucao e carregamento no BigQuery"
+        },
+    ]
 
 
 # =============================================================================
@@ -68,7 +74,7 @@ BASE_FIELDS = [
 
 DIMENSION_SCHEMAS: Dict[str, TableSchema] = {
     # -------------------------------------------------------------------------
-    # CAMPANHA - Dimensoes de campanha e aquisicao
+    # CAMPAIGN - Dimensoes de campanha e aquisicao
     # -------------------------------------------------------------------------
     "CAMPAIGN": TableSchema(
         table_name="GA4_DIM_CAMPAIGN",
@@ -98,32 +104,32 @@ DIMENSION_SCHEMAS: Dict[str, TableSchema] = {
             "conversions",
             "totalRevenue",
         ],
-        schema_fields=BASE_FIELDS + [
-            {"name": "campaign_id", "type": "STRING", "mode": "NULLABLE", "description": "ID da campanha"},
-            {"name": "campaign_name", "type": "STRING", "mode": "NULLABLE", "description": "Nome da campanha"},
-            {"name": "session_campaign_id", "type": "STRING", "mode": "NULLABLE", "description": "ID da campanha da sessao"},
-            {"name": "session_campaign_name", "type": "STRING", "mode": "NULLABLE", "description": "Nome da campanha da sessao"},
-            {"name": "first_user_campaign_id", "type": "STRING", "mode": "NULLABLE", "description": "ID da campanha do primeiro usuario"},
-            {"name": "first_user_campaign_name", "type": "STRING", "mode": "NULLABLE", "description": "Nome da campanha do primeiro usuario"},
-            {"name": "session_manual_ad_content", "type": "STRING", "mode": "NULLABLE", "description": "Conteudo do anuncio manual"},
-            {"name": "session_manual_term", "type": "STRING", "mode": "NULLABLE", "description": "Termo manual da sessao"},
-            {"name": "google_ads_ad_group_id", "type": "STRING", "mode": "NULLABLE", "description": "ID do grupo de anuncios Google Ads"},
-            {"name": "google_ads_ad_group_name", "type": "STRING", "mode": "NULLABLE", "description": "Nome do grupo de anuncios Google Ads"},
-            {"name": "google_ads_ad_network_type", "type": "STRING", "mode": "NULLABLE", "description": "Tipo de rede Google Ads"},
-            {"name": "sessions", "type": "INTEGER", "mode": "NULLABLE", "description": "Numero de sessoes"},
-            {"name": "total_users", "type": "INTEGER", "mode": "NULLABLE", "description": "Total de usuarios"},
-            {"name": "new_users", "type": "INTEGER", "mode": "NULLABLE", "description": "Novos usuarios"},
-            {"name": "active_users", "type": "INTEGER", "mode": "NULLABLE", "description": "Usuarios ativos"},
-            {"name": "engaged_sessions", "type": "INTEGER", "mode": "NULLABLE", "description": "Sessoes engajadas"},
-            {"name": "engagement_rate", "type": "FLOAT", "mode": "NULLABLE", "description": "Taxa de engajamento"},
-            {"name": "event_count", "type": "INTEGER", "mode": "NULLABLE", "description": "Contagem de eventos"},
-            {"name": "conversions", "type": "INTEGER", "mode": "NULLABLE", "description": "Conversoes"},
-            {"name": "total_revenue", "type": "FLOAT", "mode": "NULLABLE", "description": "Receita total"},
+        schema_fields=get_base_fields("GA4_DIM_CAMPAIGN") + [
+            {"name": "CAMPAIGN_ID", "type": "STRING", "mode": "NULLABLE", "description": "ID da campanha"},
+            {"name": "CAMPAIGN_NAME", "type": "STRING", "mode": "NULLABLE", "description": "Nome da campanha"},
+            {"name": "SESSION_CAMPAIGN_ID", "type": "STRING", "mode": "NULLABLE", "description": "ID da campanha da sessao"},
+            {"name": "SESSION_CAMPAIGN_NAME", "type": "STRING", "mode": "NULLABLE", "description": "Nome da campanha da sessao"},
+            {"name": "FIRST_USER_CAMPAIGN_ID", "type": "STRING", "mode": "NULLABLE", "description": "ID da campanha do primeiro usuario"},
+            {"name": "FIRST_USER_CAMPAIGN_NAME", "type": "STRING", "mode": "NULLABLE", "description": "Nome da campanha do primeiro usuario"},
+            {"name": "SESSION_MANUAL_AD_CONTENT", "type": "STRING", "mode": "NULLABLE", "description": "Conteudo do anuncio manual"},
+            {"name": "SESSION_MANUAL_TERM", "type": "STRING", "mode": "NULLABLE", "description": "Termo manual da sessao"},
+            {"name": "GOOGLE_ADS_AD_GROUP_ID", "type": "STRING", "mode": "NULLABLE", "description": "ID do grupo de anuncios Google Ads"},
+            {"name": "GOOGLE_ADS_AD_GROUP_NAME", "type": "STRING", "mode": "NULLABLE", "description": "Nome do grupo de anuncios Google Ads"},
+            {"name": "GOOGLE_ADS_AD_NETWORK_TYPE", "type": "STRING", "mode": "NULLABLE", "description": "Tipo de rede Google Ads"},
+            {"name": "SESSIONS", "type": "INTEGER", "mode": "NULLABLE", "description": "Numero de sessoes"},
+            {"name": "TOTAL_USERS", "type": "INTEGER", "mode": "NULLABLE", "description": "Total de usuarios"},
+            {"name": "NEW_USERS", "type": "INTEGER", "mode": "NULLABLE", "description": "Novos usuarios"},
+            {"name": "ACTIVE_USERS", "type": "INTEGER", "mode": "NULLABLE", "description": "Usuarios ativos"},
+            {"name": "ENGAGED_SESSIONS", "type": "INTEGER", "mode": "NULLABLE", "description": "Sessoes engajadas"},
+            {"name": "ENGAGEMENT_RATE", "type": "FLOAT", "mode": "NULLABLE", "description": "Taxa de engajamento"},
+            {"name": "EVENT_COUNT", "type": "INTEGER", "mode": "NULLABLE", "description": "Contagem de eventos"},
+            {"name": "CONVERSIONS", "type": "INTEGER", "mode": "NULLABLE", "description": "Conversoes"},
+            {"name": "TOTAL_REVENUE", "type": "FLOAT", "mode": "NULLABLE", "description": "Receita total"},
         ]
     ),
 
     # -------------------------------------------------------------------------
-    # SOURCE/MEDIUM - Dimensoes de origem e midia
+    # SOURCE_MEDIUM - Dimensoes de origem e midia
     # -------------------------------------------------------------------------
     "SOURCE_MEDIUM": TableSchema(
         table_name="GA4_DIM_SOURCE_MEDIUM",
@@ -151,25 +157,25 @@ DIMENSION_SCHEMAS: Dict[str, TableSchema] = {
             "screenPageViews",
             "conversions",
         ],
-        schema_fields=BASE_FIELDS + [
-            {"name": "session_source", "type": "STRING", "mode": "NULLABLE", "description": "Origem da sessao"},
-            {"name": "session_medium", "type": "STRING", "mode": "NULLABLE", "description": "Midia da sessao"},
-            {"name": "session_source_medium", "type": "STRING", "mode": "NULLABLE", "description": "Origem/Midia da sessao"},
-            {"name": "session_source_platform", "type": "STRING", "mode": "NULLABLE", "description": "Plataforma de origem da sessao"},
-            {"name": "first_user_source", "type": "STRING", "mode": "NULLABLE", "description": "Origem do primeiro usuario"},
-            {"name": "first_user_medium", "type": "STRING", "mode": "NULLABLE", "description": "Midia do primeiro usuario"},
-            {"name": "first_user_source_medium", "type": "STRING", "mode": "NULLABLE", "description": "Origem/Midia do primeiro usuario"},
-            {"name": "first_user_source_platform", "type": "STRING", "mode": "NULLABLE", "description": "Plataforma de origem do primeiro usuario"},
-            {"name": "sessions", "type": "INTEGER", "mode": "NULLABLE", "description": "Numero de sessoes"},
-            {"name": "total_users", "type": "INTEGER", "mode": "NULLABLE", "description": "Total de usuarios"},
-            {"name": "new_users", "type": "INTEGER", "mode": "NULLABLE", "description": "Novos usuarios"},
-            {"name": "active_users", "type": "INTEGER", "mode": "NULLABLE", "description": "Usuarios ativos"},
-            {"name": "engaged_sessions", "type": "INTEGER", "mode": "NULLABLE", "description": "Sessoes engajadas"},
-            {"name": "engagement_rate", "type": "FLOAT", "mode": "NULLABLE", "description": "Taxa de engajamento"},
-            {"name": "bounce_rate", "type": "FLOAT", "mode": "NULLABLE", "description": "Taxa de rejeicao"},
-            {"name": "average_session_duration", "type": "FLOAT", "mode": "NULLABLE", "description": "Duracao media da sessao"},
-            {"name": "screen_page_views", "type": "INTEGER", "mode": "NULLABLE", "description": "Visualizacoes de pagina"},
-            {"name": "conversions", "type": "INTEGER", "mode": "NULLABLE", "description": "Conversoes"},
+        schema_fields=get_base_fields("GA4_DIM_SOURCE_MEDIUM") + [
+            {"name": "SESSION_SOURCE", "type": "STRING", "mode": "NULLABLE", "description": "Origem da sessao"},
+            {"name": "SESSION_MEDIUM", "type": "STRING", "mode": "NULLABLE", "description": "Midia da sessao"},
+            {"name": "SESSION_SOURCE_MEDIUM", "type": "STRING", "mode": "NULLABLE", "description": "Origem/Midia da sessao"},
+            {"name": "SESSION_SOURCE_PLATFORM", "type": "STRING", "mode": "NULLABLE", "description": "Plataforma de origem da sessao"},
+            {"name": "FIRST_USER_SOURCE", "type": "STRING", "mode": "NULLABLE", "description": "Origem do primeiro usuario"},
+            {"name": "FIRST_USER_MEDIUM", "type": "STRING", "mode": "NULLABLE", "description": "Midia do primeiro usuario"},
+            {"name": "FIRST_USER_SOURCE_MEDIUM", "type": "STRING", "mode": "NULLABLE", "description": "Origem/Midia do primeiro usuario"},
+            {"name": "FIRST_USER_SOURCE_PLATFORM", "type": "STRING", "mode": "NULLABLE", "description": "Plataforma de origem do primeiro usuario"},
+            {"name": "SESSIONS", "type": "INTEGER", "mode": "NULLABLE", "description": "Numero de sessoes"},
+            {"name": "TOTAL_USERS", "type": "INTEGER", "mode": "NULLABLE", "description": "Total de usuarios"},
+            {"name": "NEW_USERS", "type": "INTEGER", "mode": "NULLABLE", "description": "Novos usuarios"},
+            {"name": "ACTIVE_USERS", "type": "INTEGER", "mode": "NULLABLE", "description": "Usuarios ativos"},
+            {"name": "ENGAGED_SESSIONS", "type": "INTEGER", "mode": "NULLABLE", "description": "Sessoes engajadas"},
+            {"name": "ENGAGEMENT_RATE", "type": "FLOAT", "mode": "NULLABLE", "description": "Taxa de engajamento"},
+            {"name": "BOUNCE_RATE", "type": "FLOAT", "mode": "NULLABLE", "description": "Taxa de rejeicao"},
+            {"name": "AVERAGE_SESSION_DURATION", "type": "FLOAT", "mode": "NULLABLE", "description": "Duracao media da sessao"},
+            {"name": "SCREEN_PAGE_VIEWS", "type": "INTEGER", "mode": "NULLABLE", "description": "Visualizacoes de pagina"},
+            {"name": "CONVERSIONS", "type": "INTEGER", "mode": "NULLABLE", "description": "Conversoes"},
         ]
     ),
 
@@ -198,21 +204,21 @@ DIMENSION_SCHEMAS: Dict[str, TableSchema] = {
             "conversions",
             "totalRevenue",
         ],
-        schema_fields=BASE_FIELDS + [
-            {"name": "session_default_channel_group", "type": "STRING", "mode": "NULLABLE", "description": "Grupo de canal padrao da sessao"},
-            {"name": "first_user_default_channel_group", "type": "STRING", "mode": "NULLABLE", "description": "Grupo de canal padrao do primeiro usuario"},
-            {"name": "session_primary_channel_group", "type": "STRING", "mode": "NULLABLE", "description": "Grupo de canal primario da sessao"},
-            {"name": "first_user_primary_channel_group", "type": "STRING", "mode": "NULLABLE", "description": "Grupo de canal primario do primeiro usuario"},
-            {"name": "sessions", "type": "INTEGER", "mode": "NULLABLE", "description": "Numero de sessoes"},
-            {"name": "total_users", "type": "INTEGER", "mode": "NULLABLE", "description": "Total de usuarios"},
-            {"name": "new_users", "type": "INTEGER", "mode": "NULLABLE", "description": "Novos usuarios"},
-            {"name": "active_users", "type": "INTEGER", "mode": "NULLABLE", "description": "Usuarios ativos"},
-            {"name": "engaged_sessions", "type": "INTEGER", "mode": "NULLABLE", "description": "Sessoes engajadas"},
-            {"name": "engagement_rate", "type": "FLOAT", "mode": "NULLABLE", "description": "Taxa de engajamento"},
-            {"name": "bounce_rate", "type": "FLOAT", "mode": "NULLABLE", "description": "Taxa de rejeicao"},
-            {"name": "average_session_duration", "type": "FLOAT", "mode": "NULLABLE", "description": "Duracao media da sessao"},
-            {"name": "conversions", "type": "INTEGER", "mode": "NULLABLE", "description": "Conversoes"},
-            {"name": "total_revenue", "type": "FLOAT", "mode": "NULLABLE", "description": "Receita total"},
+        schema_fields=get_base_fields("GA4_DIM_CHANNEL") + [
+            {"name": "SESSION_DEFAULT_CHANNEL_GROUP", "type": "STRING", "mode": "NULLABLE", "description": "Grupo de canal padrao da sessao"},
+            {"name": "FIRST_USER_DEFAULT_CHANNEL_GROUP", "type": "STRING", "mode": "NULLABLE", "description": "Grupo de canal padrao do primeiro usuario"},
+            {"name": "SESSION_PRIMARY_CHANNEL_GROUP", "type": "STRING", "mode": "NULLABLE", "description": "Grupo de canal primario da sessao"},
+            {"name": "FIRST_USER_PRIMARY_CHANNEL_GROUP", "type": "STRING", "mode": "NULLABLE", "description": "Grupo de canal primario do primeiro usuario"},
+            {"name": "SESSIONS", "type": "INTEGER", "mode": "NULLABLE", "description": "Numero de sessoes"},
+            {"name": "TOTAL_USERS", "type": "INTEGER", "mode": "NULLABLE", "description": "Total de usuarios"},
+            {"name": "NEW_USERS", "type": "INTEGER", "mode": "NULLABLE", "description": "Novos usuarios"},
+            {"name": "ACTIVE_USERS", "type": "INTEGER", "mode": "NULLABLE", "description": "Usuarios ativos"},
+            {"name": "ENGAGED_SESSIONS", "type": "INTEGER", "mode": "NULLABLE", "description": "Sessoes engajadas"},
+            {"name": "ENGAGEMENT_RATE", "type": "FLOAT", "mode": "NULLABLE", "description": "Taxa de engajamento"},
+            {"name": "BOUNCE_RATE", "type": "FLOAT", "mode": "NULLABLE", "description": "Taxa de rejeicao"},
+            {"name": "AVERAGE_SESSION_DURATION", "type": "FLOAT", "mode": "NULLABLE", "description": "Duracao media da sessao"},
+            {"name": "CONVERSIONS", "type": "INTEGER", "mode": "NULLABLE", "description": "Conversoes"},
+            {"name": "TOTAL_REVENUE", "type": "FLOAT", "mode": "NULLABLE", "description": "Receita total"},
         ]
     ),
 
@@ -242,22 +248,22 @@ DIMENSION_SCHEMAS: Dict[str, TableSchema] = {
             "engagementRate",
             "screenPageViews",
         ],
-        schema_fields=BASE_FIELDS + [
-            {"name": "country", "type": "STRING", "mode": "NULLABLE", "description": "Pais"},
-            {"name": "country_id", "type": "STRING", "mode": "NULLABLE", "description": "ID do pais"},
-            {"name": "region", "type": "STRING", "mode": "NULLABLE", "description": "Regiao/Estado"},
-            {"name": "city", "type": "STRING", "mode": "NULLABLE", "description": "Cidade"},
-            {"name": "city_id", "type": "STRING", "mode": "NULLABLE", "description": "ID da cidade"},
-            {"name": "continent", "type": "STRING", "mode": "NULLABLE", "description": "Continente"},
-            {"name": "continent_id", "type": "STRING", "mode": "NULLABLE", "description": "ID do continente"},
-            {"name": "sub_continent", "type": "STRING", "mode": "NULLABLE", "description": "Subcontinente"},
-            {"name": "sessions", "type": "INTEGER", "mode": "NULLABLE", "description": "Numero de sessoes"},
-            {"name": "total_users", "type": "INTEGER", "mode": "NULLABLE", "description": "Total de usuarios"},
-            {"name": "new_users", "type": "INTEGER", "mode": "NULLABLE", "description": "Novos usuarios"},
-            {"name": "active_users", "type": "INTEGER", "mode": "NULLABLE", "description": "Usuarios ativos"},
-            {"name": "engaged_sessions", "type": "INTEGER", "mode": "NULLABLE", "description": "Sessoes engajadas"},
-            {"name": "engagement_rate", "type": "FLOAT", "mode": "NULLABLE", "description": "Taxa de engajamento"},
-            {"name": "screen_page_views", "type": "INTEGER", "mode": "NULLABLE", "description": "Visualizacoes de pagina"},
+        schema_fields=get_base_fields("GA4_DIM_GEOGRAPHIC") + [
+            {"name": "COUNTRY", "type": "STRING", "mode": "NULLABLE", "description": "Pais"},
+            {"name": "COUNTRY_ID", "type": "STRING", "mode": "NULLABLE", "description": "ID do pais"},
+            {"name": "REGION", "type": "STRING", "mode": "NULLABLE", "description": "Regiao/Estado"},
+            {"name": "CITY", "type": "STRING", "mode": "NULLABLE", "description": "Cidade"},
+            {"name": "CITY_ID", "type": "STRING", "mode": "NULLABLE", "description": "ID da cidade"},
+            {"name": "CONTINENT", "type": "STRING", "mode": "NULLABLE", "description": "Continente"},
+            {"name": "CONTINENT_ID", "type": "STRING", "mode": "NULLABLE", "description": "ID do continente"},
+            {"name": "SUB_CONTINENT", "type": "STRING", "mode": "NULLABLE", "description": "Subcontinente"},
+            {"name": "SESSIONS", "type": "INTEGER", "mode": "NULLABLE", "description": "Numero de sessoes"},
+            {"name": "TOTAL_USERS", "type": "INTEGER", "mode": "NULLABLE", "description": "Total de usuarios"},
+            {"name": "NEW_USERS", "type": "INTEGER", "mode": "NULLABLE", "description": "Novos usuarios"},
+            {"name": "ACTIVE_USERS", "type": "INTEGER", "mode": "NULLABLE", "description": "Usuarios ativos"},
+            {"name": "ENGAGED_SESSIONS", "type": "INTEGER", "mode": "NULLABLE", "description": "Sessoes engajadas"},
+            {"name": "ENGAGEMENT_RATE", "type": "FLOAT", "mode": "NULLABLE", "description": "Taxa de engajamento"},
+            {"name": "SCREEN_PAGE_VIEWS", "type": "INTEGER", "mode": "NULLABLE", "description": "Visualizacoes de pagina"},
         ]
     ),
 
@@ -292,27 +298,27 @@ DIMENSION_SCHEMAS: Dict[str, TableSchema] = {
             "engagementRate",
             "screenPageViews",
         ],
-        schema_fields=BASE_FIELDS + [
-            {"name": "device_category", "type": "STRING", "mode": "NULLABLE", "description": "Categoria do dispositivo"},
-            {"name": "device_model", "type": "STRING", "mode": "NULLABLE", "description": "Modelo do dispositivo"},
-            {"name": "mobile_device_branding", "type": "STRING", "mode": "NULLABLE", "description": "Marca do dispositivo movel"},
-            {"name": "mobile_device_model", "type": "STRING", "mode": "NULLABLE", "description": "Modelo do dispositivo movel"},
-            {"name": "mobile_device_marketing_name", "type": "STRING", "mode": "NULLABLE", "description": "Nome de marketing do dispositivo movel"},
-            {"name": "operating_system", "type": "STRING", "mode": "NULLABLE", "description": "Sistema operacional"},
-            {"name": "operating_system_version", "type": "STRING", "mode": "NULLABLE", "description": "Versao do sistema operacional"},
-            {"name": "operating_system_with_version", "type": "STRING", "mode": "NULLABLE", "description": "Sistema operacional com versao"},
-            {"name": "browser", "type": "STRING", "mode": "NULLABLE", "description": "Navegador"},
-            {"name": "browser_version", "type": "STRING", "mode": "NULLABLE", "description": "Versao do navegador"},
-            {"name": "platform", "type": "STRING", "mode": "NULLABLE", "description": "Plataforma"},
-            {"name": "platform_device_category", "type": "STRING", "mode": "NULLABLE", "description": "Categoria de dispositivo da plataforma"},
-            {"name": "screen_resolution", "type": "STRING", "mode": "NULLABLE", "description": "Resolucao de tela"},
-            {"name": "sessions", "type": "INTEGER", "mode": "NULLABLE", "description": "Numero de sessoes"},
-            {"name": "total_users", "type": "INTEGER", "mode": "NULLABLE", "description": "Total de usuarios"},
-            {"name": "new_users", "type": "INTEGER", "mode": "NULLABLE", "description": "Novos usuarios"},
-            {"name": "active_users", "type": "INTEGER", "mode": "NULLABLE", "description": "Usuarios ativos"},
-            {"name": "engaged_sessions", "type": "INTEGER", "mode": "NULLABLE", "description": "Sessoes engajadas"},
-            {"name": "engagement_rate", "type": "FLOAT", "mode": "NULLABLE", "description": "Taxa de engajamento"},
-            {"name": "screen_page_views", "type": "INTEGER", "mode": "NULLABLE", "description": "Visualizacoes de pagina"},
+        schema_fields=get_base_fields("GA4_DIM_DEVICE") + [
+            {"name": "DEVICE_CATEGORY", "type": "STRING", "mode": "NULLABLE", "description": "Categoria do dispositivo"},
+            {"name": "DEVICE_MODEL", "type": "STRING", "mode": "NULLABLE", "description": "Modelo do dispositivo"},
+            {"name": "MOBILE_DEVICE_BRANDING", "type": "STRING", "mode": "NULLABLE", "description": "Marca do dispositivo movel"},
+            {"name": "MOBILE_DEVICE_MODEL", "type": "STRING", "mode": "NULLABLE", "description": "Modelo do dispositivo movel"},
+            {"name": "MOBILE_DEVICE_MARKETING_NAME", "type": "STRING", "mode": "NULLABLE", "description": "Nome de marketing do dispositivo movel"},
+            {"name": "OPERATING_SYSTEM", "type": "STRING", "mode": "NULLABLE", "description": "Sistema operacional"},
+            {"name": "OPERATING_SYSTEM_VERSION", "type": "STRING", "mode": "NULLABLE", "description": "Versao do sistema operacional"},
+            {"name": "OPERATING_SYSTEM_WITH_VERSION", "type": "STRING", "mode": "NULLABLE", "description": "Sistema operacional com versao"},
+            {"name": "BROWSER", "type": "STRING", "mode": "NULLABLE", "description": "Navegador"},
+            {"name": "BROWSER_VERSION", "type": "STRING", "mode": "NULLABLE", "description": "Versao do navegador"},
+            {"name": "PLATFORM", "type": "STRING", "mode": "NULLABLE", "description": "Plataforma"},
+            {"name": "PLATFORM_DEVICE_CATEGORY", "type": "STRING", "mode": "NULLABLE", "description": "Categoria de dispositivo da plataforma"},
+            {"name": "SCREEN_RESOLUTION", "type": "STRING", "mode": "NULLABLE", "description": "Resolucao de tela"},
+            {"name": "SESSIONS", "type": "INTEGER", "mode": "NULLABLE", "description": "Numero de sessoes"},
+            {"name": "TOTAL_USERS", "type": "INTEGER", "mode": "NULLABLE", "description": "Total de usuarios"},
+            {"name": "NEW_USERS", "type": "INTEGER", "mode": "NULLABLE", "description": "Novos usuarios"},
+            {"name": "ACTIVE_USERS", "type": "INTEGER", "mode": "NULLABLE", "description": "Usuarios ativos"},
+            {"name": "ENGAGED_SESSIONS", "type": "INTEGER", "mode": "NULLABLE", "description": "Sessoes engajadas"},
+            {"name": "ENGAGEMENT_RATE", "type": "FLOAT", "mode": "NULLABLE", "description": "Taxa de engajamento"},
+            {"name": "SCREEN_PAGE_VIEWS", "type": "INTEGER", "mode": "NULLABLE", "description": "Visualizacoes de pagina"},
         ]
     ),
 
@@ -346,26 +352,26 @@ DIMENSION_SCHEMAS: Dict[str, TableSchema] = {
             "entrances",
             "exits",
         ],
-        schema_fields=BASE_FIELDS + [
-            {"name": "page_path", "type": "STRING", "mode": "NULLABLE", "description": "Caminho da pagina"},
-            {"name": "page_path_plus_query_string", "type": "STRING", "mode": "NULLABLE", "description": "Caminho da pagina com query string"},
-            {"name": "page_title", "type": "STRING", "mode": "NULLABLE", "description": "Titulo da pagina"},
-            {"name": "landing_page", "type": "STRING", "mode": "NULLABLE", "description": "Pagina de entrada"},
-            {"name": "landing_page_plus_query_string", "type": "STRING", "mode": "NULLABLE", "description": "Pagina de entrada com query string"},
-            {"name": "exit_page", "type": "STRING", "mode": "NULLABLE", "description": "Pagina de saida"},
-            {"name": "hostname", "type": "STRING", "mode": "NULLABLE", "description": "Nome do host"},
-            {"name": "page_referrer", "type": "STRING", "mode": "NULLABLE", "description": "Referenciador da pagina"},
-            {"name": "content_group", "type": "STRING", "mode": "NULLABLE", "description": "Grupo de conteudo"},
-            {"name": "content_id", "type": "STRING", "mode": "NULLABLE", "description": "ID do conteudo"},
-            {"name": "content_type", "type": "STRING", "mode": "NULLABLE", "description": "Tipo de conteudo"},
-            {"name": "screen_page_views", "type": "INTEGER", "mode": "NULLABLE", "description": "Visualizacoes de pagina"},
-            {"name": "active_users", "type": "INTEGER", "mode": "NULLABLE", "description": "Usuarios ativos"},
-            {"name": "sessions", "type": "INTEGER", "mode": "NULLABLE", "description": "Numero de sessoes"},
-            {"name": "engaged_sessions", "type": "INTEGER", "mode": "NULLABLE", "description": "Sessoes engajadas"},
-            {"name": "average_session_duration", "type": "FLOAT", "mode": "NULLABLE", "description": "Duracao media da sessao"},
-            {"name": "bounce_rate", "type": "FLOAT", "mode": "NULLABLE", "description": "Taxa de rejeicao"},
-            {"name": "entrances", "type": "INTEGER", "mode": "NULLABLE", "description": "Entradas"},
-            {"name": "exits", "type": "INTEGER", "mode": "NULLABLE", "description": "Saidas"},
+        schema_fields=get_base_fields("GA4_DIM_PAGE") + [
+            {"name": "PAGE_PATH", "type": "STRING", "mode": "NULLABLE", "description": "Caminho da pagina"},
+            {"name": "PAGE_PATH_PLUS_QUERY_STRING", "type": "STRING", "mode": "NULLABLE", "description": "Caminho da pagina com query string"},
+            {"name": "PAGE_TITLE", "type": "STRING", "mode": "NULLABLE", "description": "Titulo da pagina"},
+            {"name": "LANDING_PAGE", "type": "STRING", "mode": "NULLABLE", "description": "Pagina de entrada"},
+            {"name": "LANDING_PAGE_PLUS_QUERY_STRING", "type": "STRING", "mode": "NULLABLE", "description": "Pagina de entrada com query string"},
+            {"name": "EXIT_PAGE", "type": "STRING", "mode": "NULLABLE", "description": "Pagina de saida"},
+            {"name": "HOSTNAME", "type": "STRING", "mode": "NULLABLE", "description": "Nome do host"},
+            {"name": "PAGE_REFERRER", "type": "STRING", "mode": "NULLABLE", "description": "Referenciador da pagina"},
+            {"name": "CONTENT_GROUP", "type": "STRING", "mode": "NULLABLE", "description": "Grupo de conteudo"},
+            {"name": "CONTENT_ID", "type": "STRING", "mode": "NULLABLE", "description": "ID do conteudo"},
+            {"name": "CONTENT_TYPE", "type": "STRING", "mode": "NULLABLE", "description": "Tipo de conteudo"},
+            {"name": "SCREEN_PAGE_VIEWS", "type": "INTEGER", "mode": "NULLABLE", "description": "Visualizacoes de pagina"},
+            {"name": "ACTIVE_USERS", "type": "INTEGER", "mode": "NULLABLE", "description": "Usuarios ativos"},
+            {"name": "SESSIONS", "type": "INTEGER", "mode": "NULLABLE", "description": "Numero de sessoes"},
+            {"name": "ENGAGED_SESSIONS", "type": "INTEGER", "mode": "NULLABLE", "description": "Sessoes engajadas"},
+            {"name": "AVERAGE_SESSION_DURATION", "type": "FLOAT", "mode": "NULLABLE", "description": "Duracao media da sessao"},
+            {"name": "BOUNCE_RATE", "type": "FLOAT", "mode": "NULLABLE", "description": "Taxa de rejeicao"},
+            {"name": "ENTRANCES", "type": "INTEGER", "mode": "NULLABLE", "description": "Entradas"},
+            {"name": "EXITS", "type": "INTEGER", "mode": "NULLABLE", "description": "Saidas"},
         ]
     ),
 
@@ -379,7 +385,6 @@ DIMENSION_SCHEMAS: Dict[str, TableSchema] = {
             "date",
             "eventName",
             "isConversionEvent",
-            "customEvent:parameter_name",
         ],
         metrics=[
             "eventCount",
@@ -391,17 +396,17 @@ DIMENSION_SCHEMAS: Dict[str, TableSchema] = {
             "eventValue",
             "totalRevenue",
         ],
-        schema_fields=BASE_FIELDS + [
-            {"name": "event_name", "type": "STRING", "mode": "NULLABLE", "description": "Nome do evento"},
-            {"name": "is_conversion_event", "type": "STRING", "mode": "NULLABLE", "description": "Indica se e evento de conversao"},
-            {"name": "event_count", "type": "INTEGER", "mode": "NULLABLE", "description": "Contagem de eventos"},
-            {"name": "event_count_per_user", "type": "FLOAT", "mode": "NULLABLE", "description": "Eventos por usuario"},
-            {"name": "events_per_session", "type": "FLOAT", "mode": "NULLABLE", "description": "Eventos por sessao"},
-            {"name": "active_users", "type": "INTEGER", "mode": "NULLABLE", "description": "Usuarios ativos"},
-            {"name": "total_users", "type": "INTEGER", "mode": "NULLABLE", "description": "Total de usuarios"},
-            {"name": "conversions", "type": "INTEGER", "mode": "NULLABLE", "description": "Conversoes"},
-            {"name": "event_value", "type": "FLOAT", "mode": "NULLABLE", "description": "Valor do evento"},
-            {"name": "total_revenue", "type": "FLOAT", "mode": "NULLABLE", "description": "Receita total"},
+        schema_fields=get_base_fields("GA4_DIM_EVENT") + [
+            {"name": "EVENT_NAME", "type": "STRING", "mode": "NULLABLE", "description": "Nome do evento"},
+            {"name": "IS_CONVERSION_EVENT", "type": "STRING", "mode": "NULLABLE", "description": "Indica se e evento de conversao"},
+            {"name": "EVENT_COUNT", "type": "INTEGER", "mode": "NULLABLE", "description": "Contagem de eventos"},
+            {"name": "EVENT_COUNT_PER_USER", "type": "FLOAT", "mode": "NULLABLE", "description": "Eventos por usuario"},
+            {"name": "EVENTS_PER_SESSION", "type": "FLOAT", "mode": "NULLABLE", "description": "Eventos por sessao"},
+            {"name": "ACTIVE_USERS", "type": "INTEGER", "mode": "NULLABLE", "description": "Usuarios ativos"},
+            {"name": "TOTAL_USERS", "type": "INTEGER", "mode": "NULLABLE", "description": "Total de usuarios"},
+            {"name": "CONVERSIONS", "type": "INTEGER", "mode": "NULLABLE", "description": "Conversoes"},
+            {"name": "EVENT_VALUE", "type": "FLOAT", "mode": "NULLABLE", "description": "Valor do evento"},
+            {"name": "TOTAL_REVENUE", "type": "FLOAT", "mode": "NULLABLE", "description": "Receita total"},
         ]
     ),
 
@@ -435,26 +440,26 @@ DIMENSION_SCHEMAS: Dict[str, TableSchema] = {
             "averageSessionDuration",
             "screenPageViewsPerSession",
         ],
-        schema_fields=BASE_FIELDS + [
-            {"name": "new_vs_returning", "type": "STRING", "mode": "NULLABLE", "description": "Novo vs recorrente"},
-            {"name": "user_age_bracket", "type": "STRING", "mode": "NULLABLE", "description": "Faixa etaria do usuario"},
-            {"name": "user_gender", "type": "STRING", "mode": "NULLABLE", "description": "Genero do usuario"},
-            {"name": "signed_in_with_user_id", "type": "STRING", "mode": "NULLABLE", "description": "Logado com user ID"},
-            {"name": "first_session_date", "type": "STRING", "mode": "NULLABLE", "description": "Data da primeira sessao"},
-            {"name": "first_user_campaign_id", "type": "STRING", "mode": "NULLABLE", "description": "ID da campanha do primeiro usuario"},
-            {"name": "first_user_campaign_name", "type": "STRING", "mode": "NULLABLE", "description": "Nome da campanha do primeiro usuario"},
-            {"name": "first_user_google_ads_account_name", "type": "STRING", "mode": "NULLABLE", "description": "Nome da conta Google Ads do primeiro usuario"},
-            {"name": "first_user_google_ads_ad_group_id", "type": "STRING", "mode": "NULLABLE", "description": "ID do grupo de anuncios do primeiro usuario"},
-            {"name": "first_user_google_ads_ad_group_name", "type": "STRING", "mode": "NULLABLE", "description": "Nome do grupo de anuncios do primeiro usuario"},
-            {"name": "active_users", "type": "INTEGER", "mode": "NULLABLE", "description": "Usuarios ativos"},
-            {"name": "new_users", "type": "INTEGER", "mode": "NULLABLE", "description": "Novos usuarios"},
-            {"name": "total_users", "type": "INTEGER", "mode": "NULLABLE", "description": "Total de usuarios"},
-            {"name": "sessions", "type": "INTEGER", "mode": "NULLABLE", "description": "Numero de sessoes"},
-            {"name": "sessions_per_user", "type": "FLOAT", "mode": "NULLABLE", "description": "Sessoes por usuario"},
-            {"name": "engaged_sessions", "type": "INTEGER", "mode": "NULLABLE", "description": "Sessoes engajadas"},
-            {"name": "engagement_rate", "type": "FLOAT", "mode": "NULLABLE", "description": "Taxa de engajamento"},
-            {"name": "average_session_duration", "type": "FLOAT", "mode": "NULLABLE", "description": "Duracao media da sessao"},
-            {"name": "screen_page_views_per_session", "type": "FLOAT", "mode": "NULLABLE", "description": "Visualizacoes por sessao"},
+        schema_fields=get_base_fields("GA4_DIM_USER") + [
+            {"name": "NEW_VS_RETURNING", "type": "STRING", "mode": "NULLABLE", "description": "Novo vs recorrente"},
+            {"name": "USER_AGE_BRACKET", "type": "STRING", "mode": "NULLABLE", "description": "Faixa etaria do usuario"},
+            {"name": "USER_GENDER", "type": "STRING", "mode": "NULLABLE", "description": "Genero do usuario"},
+            {"name": "SIGNED_IN_WITH_USER_ID", "type": "STRING", "mode": "NULLABLE", "description": "Logado com user ID"},
+            {"name": "FIRST_SESSION_DATE", "type": "STRING", "mode": "NULLABLE", "description": "Data da primeira sessao"},
+            {"name": "FIRST_USER_CAMPAIGN_ID", "type": "STRING", "mode": "NULLABLE", "description": "ID da campanha do primeiro usuario"},
+            {"name": "FIRST_USER_CAMPAIGN_NAME", "type": "STRING", "mode": "NULLABLE", "description": "Nome da campanha do primeiro usuario"},
+            {"name": "FIRST_USER_GOOGLE_ADS_ACCOUNT_NAME", "type": "STRING", "mode": "NULLABLE", "description": "Nome da conta Google Ads do primeiro usuario"},
+            {"name": "FIRST_USER_GOOGLE_ADS_AD_GROUP_ID", "type": "STRING", "mode": "NULLABLE", "description": "ID do grupo de anuncios do primeiro usuario"},
+            {"name": "FIRST_USER_GOOGLE_ADS_AD_GROUP_NAME", "type": "STRING", "mode": "NULLABLE", "description": "Nome do grupo de anuncios do primeiro usuario"},
+            {"name": "ACTIVE_USERS", "type": "INTEGER", "mode": "NULLABLE", "description": "Usuarios ativos"},
+            {"name": "NEW_USERS", "type": "INTEGER", "mode": "NULLABLE", "description": "Novos usuarios"},
+            {"name": "TOTAL_USERS", "type": "INTEGER", "mode": "NULLABLE", "description": "Total de usuarios"},
+            {"name": "SESSIONS", "type": "INTEGER", "mode": "NULLABLE", "description": "Numero de sessoes"},
+            {"name": "SESSIONS_PER_USER", "type": "FLOAT", "mode": "NULLABLE", "description": "Sessoes por usuario"},
+            {"name": "ENGAGED_SESSIONS", "type": "INTEGER", "mode": "NULLABLE", "description": "Sessoes engajadas"},
+            {"name": "ENGAGEMENT_RATE", "type": "FLOAT", "mode": "NULLABLE", "description": "Taxa de engajamento"},
+            {"name": "AVERAGE_SESSION_DURATION", "type": "FLOAT", "mode": "NULLABLE", "description": "Duracao media da sessao"},
+            {"name": "SCREEN_PAGE_VIEWS_PER_SESSION", "type": "FLOAT", "mode": "NULLABLE", "description": "Visualizacoes por sessao"},
         ]
     ),
 
@@ -499,37 +504,37 @@ DIMENSION_SCHEMAS: Dict[str, TableSchema] = {
             "totalRevenue",
             "transactions",
         ],
-        schema_fields=BASE_FIELDS + [
-            {"name": "transaction_id", "type": "STRING", "mode": "NULLABLE", "description": "ID da transacao"},
-            {"name": "item_id", "type": "STRING", "mode": "NULLABLE", "description": "ID do item"},
-            {"name": "item_name", "type": "STRING", "mode": "NULLABLE", "description": "Nome do item"},
-            {"name": "item_brand", "type": "STRING", "mode": "NULLABLE", "description": "Marca do item"},
-            {"name": "item_category", "type": "STRING", "mode": "NULLABLE", "description": "Categoria do item"},
-            {"name": "item_category_2", "type": "STRING", "mode": "NULLABLE", "description": "Categoria 2 do item"},
-            {"name": "item_category_3", "type": "STRING", "mode": "NULLABLE", "description": "Categoria 3 do item"},
-            {"name": "item_category_4", "type": "STRING", "mode": "NULLABLE", "description": "Categoria 4 do item"},
-            {"name": "item_category_5", "type": "STRING", "mode": "NULLABLE", "description": "Categoria 5 do item"},
-            {"name": "item_list_id", "type": "STRING", "mode": "NULLABLE", "description": "ID da lista de itens"},
-            {"name": "item_list_name", "type": "STRING", "mode": "NULLABLE", "description": "Nome da lista de itens"},
-            {"name": "item_list_position", "type": "STRING", "mode": "NULLABLE", "description": "Posicao na lista de itens"},
-            {"name": "item_promotion_creative_name", "type": "STRING", "mode": "NULLABLE", "description": "Nome criativo da promocao"},
-            {"name": "item_promotion_id", "type": "STRING", "mode": "NULLABLE", "description": "ID da promocao"},
-            {"name": "item_promotion_name", "type": "STRING", "mode": "NULLABLE", "description": "Nome da promocao"},
-            {"name": "order_coupon", "type": "STRING", "mode": "NULLABLE", "description": "Cupom do pedido"},
-            {"name": "shipping_tier", "type": "STRING", "mode": "NULLABLE", "description": "Nivel de envio"},
-            {"name": "ecommerce_purchases", "type": "INTEGER", "mode": "NULLABLE", "description": "Compras de ecommerce"},
-            {"name": "items_added_to_cart", "type": "INTEGER", "mode": "NULLABLE", "description": "Itens adicionados ao carrinho"},
-            {"name": "items_checked_out", "type": "INTEGER", "mode": "NULLABLE", "description": "Itens no checkout"},
-            {"name": "items_clicked_in_list", "type": "INTEGER", "mode": "NULLABLE", "description": "Itens clicados na lista"},
-            {"name": "items_clicked_in_promotion", "type": "INTEGER", "mode": "NULLABLE", "description": "Itens clicados em promocao"},
-            {"name": "items_purchased", "type": "INTEGER", "mode": "NULLABLE", "description": "Itens comprados"},
-            {"name": "items_viewed", "type": "INTEGER", "mode": "NULLABLE", "description": "Itens visualizados"},
-            {"name": "items_viewed_in_list", "type": "INTEGER", "mode": "NULLABLE", "description": "Itens visualizados na lista"},
-            {"name": "items_viewed_in_promotion", "type": "INTEGER", "mode": "NULLABLE", "description": "Itens visualizados em promocao"},
-            {"name": "item_revenue", "type": "FLOAT", "mode": "NULLABLE", "description": "Receita do item"},
-            {"name": "purchase_revenue", "type": "FLOAT", "mode": "NULLABLE", "description": "Receita de compras"},
-            {"name": "total_revenue", "type": "FLOAT", "mode": "NULLABLE", "description": "Receita total"},
-            {"name": "transactions", "type": "INTEGER", "mode": "NULLABLE", "description": "Transacoes"},
+        schema_fields=get_base_fields("GA4_DIM_ECOMMERCE") + [
+            {"name": "TRANSACTION_ID", "type": "STRING", "mode": "NULLABLE", "description": "ID da transacao"},
+            {"name": "ITEM_ID", "type": "STRING", "mode": "NULLABLE", "description": "ID do item"},
+            {"name": "ITEM_NAME", "type": "STRING", "mode": "NULLABLE", "description": "Nome do item"},
+            {"name": "ITEM_BRAND", "type": "STRING", "mode": "NULLABLE", "description": "Marca do item"},
+            {"name": "ITEM_CATEGORY", "type": "STRING", "mode": "NULLABLE", "description": "Categoria do item"},
+            {"name": "ITEM_CATEGORY_2", "type": "STRING", "mode": "NULLABLE", "description": "Categoria 2 do item"},
+            {"name": "ITEM_CATEGORY_3", "type": "STRING", "mode": "NULLABLE", "description": "Categoria 3 do item"},
+            {"name": "ITEM_CATEGORY_4", "type": "STRING", "mode": "NULLABLE", "description": "Categoria 4 do item"},
+            {"name": "ITEM_CATEGORY_5", "type": "STRING", "mode": "NULLABLE", "description": "Categoria 5 do item"},
+            {"name": "ITEM_LIST_ID", "type": "STRING", "mode": "NULLABLE", "description": "ID da lista de itens"},
+            {"name": "ITEM_LIST_NAME", "type": "STRING", "mode": "NULLABLE", "description": "Nome da lista de itens"},
+            {"name": "ITEM_LIST_POSITION", "type": "STRING", "mode": "NULLABLE", "description": "Posicao na lista de itens"},
+            {"name": "ITEM_PROMOTION_CREATIVE_NAME", "type": "STRING", "mode": "NULLABLE", "description": "Nome criativo da promocao"},
+            {"name": "ITEM_PROMOTION_ID", "type": "STRING", "mode": "NULLABLE", "description": "ID da promocao"},
+            {"name": "ITEM_PROMOTION_NAME", "type": "STRING", "mode": "NULLABLE", "description": "Nome da promocao"},
+            {"name": "ORDER_COUPON", "type": "STRING", "mode": "NULLABLE", "description": "Cupom do pedido"},
+            {"name": "SHIPPING_TIER", "type": "STRING", "mode": "NULLABLE", "description": "Nivel de envio"},
+            {"name": "ECOMMERCE_PURCHASES", "type": "INTEGER", "mode": "NULLABLE", "description": "Compras de ecommerce"},
+            {"name": "ITEMS_ADDED_TO_CART", "type": "INTEGER", "mode": "NULLABLE", "description": "Itens adicionados ao carrinho"},
+            {"name": "ITEMS_CHECKED_OUT", "type": "INTEGER", "mode": "NULLABLE", "description": "Itens no checkout"},
+            {"name": "ITEMS_CLICKED_IN_LIST", "type": "INTEGER", "mode": "NULLABLE", "description": "Itens clicados na lista"},
+            {"name": "ITEMS_CLICKED_IN_PROMOTION", "type": "INTEGER", "mode": "NULLABLE", "description": "Itens clicados em promocao"},
+            {"name": "ITEMS_PURCHASED", "type": "INTEGER", "mode": "NULLABLE", "description": "Itens comprados"},
+            {"name": "ITEMS_VIEWED", "type": "INTEGER", "mode": "NULLABLE", "description": "Itens visualizados"},
+            {"name": "ITEMS_VIEWED_IN_LIST", "type": "INTEGER", "mode": "NULLABLE", "description": "Itens visualizados na lista"},
+            {"name": "ITEMS_VIEWED_IN_PROMOTION", "type": "INTEGER", "mode": "NULLABLE", "description": "Itens visualizados em promocao"},
+            {"name": "ITEM_REVENUE", "type": "FLOAT", "mode": "NULLABLE", "description": "Receita do item"},
+            {"name": "PURCHASE_REVENUE", "type": "FLOAT", "mode": "NULLABLE", "description": "Receita de compras"},
+            {"name": "TOTAL_REVENUE", "type": "FLOAT", "mode": "NULLABLE", "description": "Receita total"},
+            {"name": "TRANSACTIONS", "type": "INTEGER", "mode": "NULLABLE", "description": "Transacoes"},
         ]
     ),
 
@@ -562,25 +567,25 @@ DIMENSION_SCHEMAS: Dict[str, TableSchema] = {
             "newUsers",
             "totalUsers",
         ],
-        schema_fields=BASE_FIELDS + [
-            {"name": "session_default_channel_group", "type": "STRING", "mode": "NULLABLE", "description": "Grupo de canal padrao"},
-            {"name": "session_source", "type": "STRING", "mode": "NULLABLE", "description": "Origem da sessao"},
-            {"name": "session_medium", "type": "STRING", "mode": "NULLABLE", "description": "Midia da sessao"},
-            {"name": "session_campaign_name", "type": "STRING", "mode": "NULLABLE", "description": "Nome da campanha"},
-            {"name": "landing_page", "type": "STRING", "mode": "NULLABLE", "description": "Pagina de entrada"},
-            {"name": "device_category", "type": "STRING", "mode": "NULLABLE", "description": "Categoria do dispositivo"},
-            {"name": "country", "type": "STRING", "mode": "NULLABLE", "description": "Pais"},
-            {"name": "sessions", "type": "INTEGER", "mode": "NULLABLE", "description": "Numero de sessoes"},
-            {"name": "engaged_sessions", "type": "INTEGER", "mode": "NULLABLE", "description": "Sessoes engajadas"},
-            {"name": "average_session_duration", "type": "FLOAT", "mode": "NULLABLE", "description": "Duracao media da sessao"},
-            {"name": "bounce_rate", "type": "FLOAT", "mode": "NULLABLE", "description": "Taxa de rejeicao"},
-            {"name": "engagement_rate", "type": "FLOAT", "mode": "NULLABLE", "description": "Taxa de engajamento"},
-            {"name": "sessions_per_user", "type": "FLOAT", "mode": "NULLABLE", "description": "Sessoes por usuario"},
-            {"name": "screen_page_views", "type": "INTEGER", "mode": "NULLABLE", "description": "Visualizacoes de pagina"},
-            {"name": "screen_page_views_per_session", "type": "FLOAT", "mode": "NULLABLE", "description": "Visualizacoes por sessao"},
-            {"name": "active_users", "type": "INTEGER", "mode": "NULLABLE", "description": "Usuarios ativos"},
-            {"name": "new_users", "type": "INTEGER", "mode": "NULLABLE", "description": "Novos usuarios"},
-            {"name": "total_users", "type": "INTEGER", "mode": "NULLABLE", "description": "Total de usuarios"},
+        schema_fields=get_base_fields("GA4_DIM_SESSION") + [
+            {"name": "SESSION_DEFAULT_CHANNEL_GROUP", "type": "STRING", "mode": "NULLABLE", "description": "Grupo de canal padrao"},
+            {"name": "SESSION_SOURCE", "type": "STRING", "mode": "NULLABLE", "description": "Origem da sessao"},
+            {"name": "SESSION_MEDIUM", "type": "STRING", "mode": "NULLABLE", "description": "Midia da sessao"},
+            {"name": "SESSION_CAMPAIGN_NAME", "type": "STRING", "mode": "NULLABLE", "description": "Nome da campanha"},
+            {"name": "LANDING_PAGE", "type": "STRING", "mode": "NULLABLE", "description": "Pagina de entrada"},
+            {"name": "DEVICE_CATEGORY", "type": "STRING", "mode": "NULLABLE", "description": "Categoria do dispositivo"},
+            {"name": "COUNTRY", "type": "STRING", "mode": "NULLABLE", "description": "Pais"},
+            {"name": "SESSIONS", "type": "INTEGER", "mode": "NULLABLE", "description": "Numero de sessoes"},
+            {"name": "ENGAGED_SESSIONS", "type": "INTEGER", "mode": "NULLABLE", "description": "Sessoes engajadas"},
+            {"name": "AVERAGE_SESSION_DURATION", "type": "FLOAT", "mode": "NULLABLE", "description": "Duracao media da sessao"},
+            {"name": "BOUNCE_RATE", "type": "FLOAT", "mode": "NULLABLE", "description": "Taxa de rejeicao"},
+            {"name": "ENGAGEMENT_RATE", "type": "FLOAT", "mode": "NULLABLE", "description": "Taxa de engajamento"},
+            {"name": "SESSIONS_PER_USER", "type": "FLOAT", "mode": "NULLABLE", "description": "Sessoes por usuario"},
+            {"name": "SCREEN_PAGE_VIEWS", "type": "INTEGER", "mode": "NULLABLE", "description": "Visualizacoes de pagina"},
+            {"name": "SCREEN_PAGE_VIEWS_PER_SESSION", "type": "FLOAT", "mode": "NULLABLE", "description": "Visualizacoes por sessao"},
+            {"name": "ACTIVE_USERS", "type": "INTEGER", "mode": "NULLABLE", "description": "Usuarios ativos"},
+            {"name": "NEW_USERS", "type": "INTEGER", "mode": "NULLABLE", "description": "Novos usuarios"},
+            {"name": "TOTAL_USERS", "type": "INTEGER", "mode": "NULLABLE", "description": "Total de usuarios"},
         ]
     ),
 
@@ -622,34 +627,34 @@ DIMENSION_SCHEMAS: Dict[str, TableSchema] = {
             "advertiserAdCostPerClick",
             "advertiserAdImpressions",
         ],
-        schema_fields=BASE_FIELDS + [
-            {"name": "session_google_ads_account_name", "type": "STRING", "mode": "NULLABLE", "description": "Nome da conta Google Ads da sessao"},
-            {"name": "session_google_ads_ad_group_id", "type": "STRING", "mode": "NULLABLE", "description": "ID do grupo de anuncios da sessao"},
-            {"name": "session_google_ads_ad_group_name", "type": "STRING", "mode": "NULLABLE", "description": "Nome do grupo de anuncios da sessao"},
-            {"name": "session_google_ads_ad_network_type", "type": "STRING", "mode": "NULLABLE", "description": "Tipo de rede de anuncios da sessao"},
-            {"name": "session_google_ads_campaign_id", "type": "STRING", "mode": "NULLABLE", "description": "ID da campanha Google Ads da sessao"},
-            {"name": "session_google_ads_campaign_name", "type": "STRING", "mode": "NULLABLE", "description": "Nome da campanha Google Ads da sessao"},
-            {"name": "session_google_ads_campaign_type", "type": "STRING", "mode": "NULLABLE", "description": "Tipo de campanha Google Ads da sessao"},
-            {"name": "session_google_ads_creative_id", "type": "STRING", "mode": "NULLABLE", "description": "ID do criativo Google Ads da sessao"},
-            {"name": "session_google_ads_keyword", "type": "STRING", "mode": "NULLABLE", "description": "Palavra-chave Google Ads da sessao"},
-            {"name": "session_google_ads_query", "type": "STRING", "mode": "NULLABLE", "description": "Query Google Ads da sessao"},
-            {"name": "google_ads_account_name", "type": "STRING", "mode": "NULLABLE", "description": "Nome da conta Google Ads"},
-            {"name": "google_ads_ad_group_id", "type": "STRING", "mode": "NULLABLE", "description": "ID do grupo de anuncios"},
-            {"name": "google_ads_ad_group_name", "type": "STRING", "mode": "NULLABLE", "description": "Nome do grupo de anuncios"},
-            {"name": "google_ads_campaign_id", "type": "STRING", "mode": "NULLABLE", "description": "ID da campanha Google Ads"},
-            {"name": "google_ads_campaign_name", "type": "STRING", "mode": "NULLABLE", "description": "Nome da campanha Google Ads"},
-            {"name": "sessions", "type": "INTEGER", "mode": "NULLABLE", "description": "Numero de sessoes"},
-            {"name": "total_users", "type": "INTEGER", "mode": "NULLABLE", "description": "Total de usuarios"},
-            {"name": "new_users", "type": "INTEGER", "mode": "NULLABLE", "description": "Novos usuarios"},
-            {"name": "active_users", "type": "INTEGER", "mode": "NULLABLE", "description": "Usuarios ativos"},
-            {"name": "engaged_sessions", "type": "INTEGER", "mode": "NULLABLE", "description": "Sessoes engajadas"},
-            {"name": "engagement_rate", "type": "FLOAT", "mode": "NULLABLE", "description": "Taxa de engajamento"},
-            {"name": "conversions", "type": "INTEGER", "mode": "NULLABLE", "description": "Conversoes"},
-            {"name": "total_revenue", "type": "FLOAT", "mode": "NULLABLE", "description": "Receita total"},
-            {"name": "advertiser_ad_clicks", "type": "INTEGER", "mode": "NULLABLE", "description": "Cliques em anuncios"},
-            {"name": "advertiser_ad_cost", "type": "FLOAT", "mode": "NULLABLE", "description": "Custo de anuncios"},
-            {"name": "advertiser_ad_cost_per_click", "type": "FLOAT", "mode": "NULLABLE", "description": "Custo por clique"},
-            {"name": "advertiser_ad_impressions", "type": "INTEGER", "mode": "NULLABLE", "description": "Impressoes de anuncios"},
+        schema_fields=get_base_fields("GA4_DIM_GOOGLE_ADS") + [
+            {"name": "SESSION_GOOGLE_ADS_ACCOUNT_NAME", "type": "STRING", "mode": "NULLABLE", "description": "Nome da conta Google Ads da sessao"},
+            {"name": "SESSION_GOOGLE_ADS_AD_GROUP_ID", "type": "STRING", "mode": "NULLABLE", "description": "ID do grupo de anuncios da sessao"},
+            {"name": "SESSION_GOOGLE_ADS_AD_GROUP_NAME", "type": "STRING", "mode": "NULLABLE", "description": "Nome do grupo de anuncios da sessao"},
+            {"name": "SESSION_GOOGLE_ADS_AD_NETWORK_TYPE", "type": "STRING", "mode": "NULLABLE", "description": "Tipo de rede de anuncios da sessao"},
+            {"name": "SESSION_GOOGLE_ADS_CAMPAIGN_ID", "type": "STRING", "mode": "NULLABLE", "description": "ID da campanha Google Ads da sessao"},
+            {"name": "SESSION_GOOGLE_ADS_CAMPAIGN_NAME", "type": "STRING", "mode": "NULLABLE", "description": "Nome da campanha Google Ads da sessao"},
+            {"name": "SESSION_GOOGLE_ADS_CAMPAIGN_TYPE", "type": "STRING", "mode": "NULLABLE", "description": "Tipo de campanha Google Ads da sessao"},
+            {"name": "SESSION_GOOGLE_ADS_CREATIVE_ID", "type": "STRING", "mode": "NULLABLE", "description": "ID do criativo Google Ads da sessao"},
+            {"name": "SESSION_GOOGLE_ADS_KEYWORD", "type": "STRING", "mode": "NULLABLE", "description": "Palavra-chave Google Ads da sessao"},
+            {"name": "SESSION_GOOGLE_ADS_QUERY", "type": "STRING", "mode": "NULLABLE", "description": "Query Google Ads da sessao"},
+            {"name": "GOOGLE_ADS_ACCOUNT_NAME", "type": "STRING", "mode": "NULLABLE", "description": "Nome da conta Google Ads"},
+            {"name": "GOOGLE_ADS_AD_GROUP_ID", "type": "STRING", "mode": "NULLABLE", "description": "ID do grupo de anuncios"},
+            {"name": "GOOGLE_ADS_AD_GROUP_NAME", "type": "STRING", "mode": "NULLABLE", "description": "Nome do grupo de anuncios"},
+            {"name": "GOOGLE_ADS_CAMPAIGN_ID", "type": "STRING", "mode": "NULLABLE", "description": "ID da campanha Google Ads"},
+            {"name": "GOOGLE_ADS_CAMPAIGN_NAME", "type": "STRING", "mode": "NULLABLE", "description": "Nome da campanha Google Ads"},
+            {"name": "SESSIONS", "type": "INTEGER", "mode": "NULLABLE", "description": "Numero de sessoes"},
+            {"name": "TOTAL_USERS", "type": "INTEGER", "mode": "NULLABLE", "description": "Total de usuarios"},
+            {"name": "NEW_USERS", "type": "INTEGER", "mode": "NULLABLE", "description": "Novos usuarios"},
+            {"name": "ACTIVE_USERS", "type": "INTEGER", "mode": "NULLABLE", "description": "Usuarios ativos"},
+            {"name": "ENGAGED_SESSIONS", "type": "INTEGER", "mode": "NULLABLE", "description": "Sessoes engajadas"},
+            {"name": "ENGAGEMENT_RATE", "type": "FLOAT", "mode": "NULLABLE", "description": "Taxa de engajamento"},
+            {"name": "CONVERSIONS", "type": "INTEGER", "mode": "NULLABLE", "description": "Conversoes"},
+            {"name": "TOTAL_REVENUE", "type": "FLOAT", "mode": "NULLABLE", "description": "Receita total"},
+            {"name": "ADVERTISER_AD_CLICKS", "type": "INTEGER", "mode": "NULLABLE", "description": "Cliques em anuncios"},
+            {"name": "ADVERTISER_AD_COST", "type": "FLOAT", "mode": "NULLABLE", "description": "Custo de anuncios"},
+            {"name": "ADVERTISER_AD_COST_PER_CLICK", "type": "FLOAT", "mode": "NULLABLE", "description": "Custo por clique"},
+            {"name": "ADVERTISER_AD_IMPRESSIONS", "type": "INTEGER", "mode": "NULLABLE", "description": "Impressoes de anuncios"},
         ]
     ),
 }
@@ -681,3 +686,16 @@ def get_schema(dimension_key: str) -> TableSchema:
 def list_available_dimensions() -> list:
     """Retorna lista de dimensoes disponiveis."""
     return list(DIMENSION_SCHEMAS.keys())
+
+
+def get_pk_field_name(table_name: str) -> str:
+    """
+    Retorna o nome do campo PK para uma tabela.
+
+    Args:
+        table_name: Nome da tabela
+
+    Returns:
+        Nome do campo PK (ex: PK_GA4_DIM_CAMPAIGN)
+    """
+    return f"PK_{table_name}"
